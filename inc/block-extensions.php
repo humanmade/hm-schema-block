@@ -63,6 +63,9 @@ function add_block_context( array $args, string $block_name ) : array {
  * Short-circuits when the request has already been primed via prime_schema_data(),
  * preventing duplicate entries when the_content() or a template renders after priming.
  *
+ * Blocks with isProperty=true are skipped here — they are folded into their parent's
+ * schema object by build_schema_object_with_children() when the parent fires.
+ *
  * @param string               $block_content Rendered block content.
  * @param array<string, mixed> $block Block data.
  * @return string
@@ -80,17 +83,83 @@ function extract_schema_data( string $block_content, array $block ) : string {
 
 	$schema_org = $block['attrs']['schemaOrg'] ?? null;
 
-	if ( ! $schema_org || empty( $schema_org['type'] ) ) {
+	// Skip: no schema config, no type, or this block is a property of its parent
+	// (parent's render_block call handles it via build_schema_object_with_children).
+	if ( ! $schema_org || empty( $schema_org['type'] ) || ! empty( $schema_org['isProperty'] ) ) {
 		return $block_content;
 	}
 
-	$schema_object = build_schema_object( $block, $schema_org );
+	$schema_object = build_schema_object_with_children( $block, $schema_org );
 
 	if ( ! empty( $schema_object ) ) {
 		$schema_org_blocks_data[] = $schema_object;
 	}
 
 	return $block_content;
+}
+
+/**
+ * Build a schema.org object from a typed block, with isProperty child blocks folded in.
+ *
+ * For each direct inner block that has isProperty=true and a propertyName:
+ *  - If the child also has a schema type, it becomes a nested object.
+ *  - Otherwise its scalar value (from an attribute mapping or stripped innerHTML) is attached.
+ * Child values always win over any parent mapping for the same property.
+ *
+ * @param array<string, mixed> $block Block data.
+ * @param array<string, mixed> $schema_org Schema org configuration.
+ * @return array<string, mixed>
+ */
+function build_schema_object_with_children( array $block, array $schema_org ) : array {
+	$schema_object = build_schema_object( $block, $schema_org );
+
+	foreach ( $block['innerBlocks'] ?? [] as $child ) {
+		$child_schema_org = $child['attrs']['schemaOrg'] ?? null;
+
+		if ( ! $child_schema_org || empty( $child_schema_org['isProperty'] ) || empty( $child_schema_org['propertyName'] ) ) {
+			continue;
+		}
+
+		$prop = $child_schema_org['propertyName'];
+
+		if ( ! empty( $child_schema_org['type'] ) ) {
+			// Nested typed entity (e.g. ImageObject as image): recurse and attach as object.
+			$child_object             = build_schema_object_with_children( $child, $child_schema_org );
+			$schema_object[ $prop ]   = $child_object;
+		} else {
+			// Plain property child: resolve to a scalar value.
+			$value = resolve_property_value( $child, $child_schema_org, $prop );
+			if ( $value !== null && $value !== '' ) {
+				$schema_object[ $prop ] = $value;
+			}
+		}
+	}
+
+	return $schema_object;
+}
+
+/**
+ * Resolve the scalar value for a property-child block.
+ *
+ * Checks for an explicit attribute mapping; falls back to stripped innerHTML.
+ *
+ * @param array<string, mixed> $block         Block data.
+ * @param array<string, mixed> $schema_org    Block's schema org config.
+ * @param string               $property_name The property being resolved.
+ * @return string|null
+ */
+function resolve_property_value( array $block, array $schema_org, string $property_name ) : ?string {
+	$mappings = $schema_org['mappings'] ?? [];
+
+	if ( isset( $mappings[ $property_name ] ) && ( $mappings[ $property_name ]['source'] ?? '' ) === 'attribute' ) {
+		$attr_name = $mappings[ $property_name ]['attributeName'] ?? null;
+		if ( $attr_name && isset( $block['attrs'][ $attr_name ] ) ) {
+			return (string) $block['attrs'][ $attr_name ];
+		}
+	}
+
+	$content = wp_strip_all_tags( $block['innerHTML'] ?? '' );
+	return trim( $content ) ?: null;
 }
 
 /**
@@ -145,6 +214,7 @@ function is_dynamic_block_name( string $name ) : bool {
 /**
  * Walk a block tree and return schema objects for all static (non-dynamic) blocks.
  * Subtrees rooted in a dynamic block are skipped — their output changes per-request.
+ * Blocks with isProperty=true are folded into their parent and excluded from top-level output.
  *
  * @param array<int, array<string, mixed>> $blocks Parsed block list from parse_blocks().
  * @return array<int, array<string, mixed>>
@@ -161,16 +231,20 @@ function extract_static_schema( array $blocks ) : array {
 
 		$schema_org = $block['attrs']['schemaOrg'] ?? [];
 
-		if ( ! empty( $schema_org['type'] ) ) {
-			$object = build_schema_object( $block, $schema_org );
+		if ( ! empty( $schema_org['type'] ) && empty( $schema_org['isProperty'] ) ) {
+			// Top-level typed block: build its schema and fold in isProperty children.
+			$object = build_schema_object_with_children( $block, $schema_org );
 			if ( ! empty( $object ) ) {
 				$schema[] = $object;
 			}
+			// isProperty children are consumed by build_schema_object_with_children — don't recurse.
+		} elseif ( empty( $schema_org['isProperty'] ) ) {
+			// Container with no type and not a property child: recurse to find typed descendants.
+			if ( ! empty( $block['innerBlocks'] ) ) {
+				$schema = array_merge( $schema, extract_static_schema( $block['innerBlocks'] ) );
+			}
 		}
-
-		if ( ! empty( $block['innerBlocks'] ) ) {
-			$schema = array_merge( $schema, extract_static_schema( $block['innerBlocks'] ) );
-		}
+		// isProperty=true blocks are handled by their parent — skip entirely at top level.
 	}
 
 	return $schema;

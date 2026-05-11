@@ -273,26 +273,3 @@ function output_json_ld() : void {
 		wp_json_encode( $schema_output, JSON_UNESCAPED_SLASHES | JSON_PRETTY_PRINT )
 	);
 }
-
-/**
- * Merge a child schema object into a parent under the given property name.
- * Stub for the parent/child nesting feature — not yet wired into extraction.
- *
- * @param array<string, mixed> $parent   Parent schema object.
- * @param array<string, mixed> $child    Child schema object.
- * @param string               $property Property name to nest under.
- * @return array<string, mixed>
- */
-function merge_schema_objects( array $parent, array $child, string $property ) : array {
-	if ( isset( $child['@type'] ) ) {
-		$parent[ $property ] = $child;
-	} else {
-		foreach ( $child as $key => $value ) {
-			if ( $key !== '@type' ) {
-				$parent[ $property ][ $key ] = $value;
-			}
-		}
-	}
-
-	return $parent;
-}

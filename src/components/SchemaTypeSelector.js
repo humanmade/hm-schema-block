@@ -123,23 +123,40 @@ const SchemaTypeSelector = ( {
 					/>
 
 					{ isProperty && (
-						<SelectControl
-							label={ __( 'Property Name', 'schema-org-blocks' ) }
-							value={ propertyName || '' }
-							options={ [
-								{
-									label: __(
-										'Select a property…',
-										'schema-org-blocks'
-									),
-									value: '',
-								},
-								...availableProperties,
-							] }
-							onChange={ ( prop ) =>
-								onPropertyChange( prop, true )
-							}
-						/>
+						<>
+							<SelectControl
+								label={ __(
+									'Property Name',
+									'schema-org-blocks'
+								) }
+								value={ propertyName || '' }
+								options={ [
+									{
+										label: __(
+											'Select a property…',
+											'schema-org-blocks'
+										),
+										value: '',
+									},
+									...availableProperties,
+								] }
+								onChange={ ( prop ) =>
+									onPropertyChange( prop, true )
+								}
+							/>
+							<p
+								style={ {
+									fontSize: '12px',
+									color: '#757575',
+									marginTop: '4px',
+								} }
+							>
+								{ __(
+									"This block's content becomes the value for this property. Save the post to apply.",
+									'schema-org-blocks'
+								) }
+							</p>
+						</>
 					) }
 				</>
 			) }

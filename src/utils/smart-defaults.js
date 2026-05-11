@@ -118,22 +118,14 @@ export function getSmartDefaults( blockName, parentSchemaContext ) {
 				type: null,
 				isProperty: true,
 				propertyName: 'headline',
-				mappings: {
-					headline: {
-						source: 'content',
-					},
-				},
+				mappings: {},
 			};
 		} else if ( parentProperties.name ) {
 			return {
 				type: null,
 				isProperty: true,
 				propertyName: 'name',
-				mappings: {
-					name: {
-						source: 'content',
-					},
-				},
+				mappings: {},
 			};
 		}
 	}
@@ -146,33 +138,21 @@ export function getSmartDefaults( blockName, parentSchemaContext ) {
 				type: null,
 				isProperty: true,
 				propertyName: 'description',
-				mappings: {
-					description: {
-						source: 'content',
-					},
-				},
+				mappings: {},
 			};
 		} else if ( parentProperties.text ) {
 			return {
 				type: null,
 				isProperty: true,
 				propertyName: 'text',
-				mappings: {
-					text: {
-						source: 'content',
-					},
-				},
+				mappings: {},
 			};
 		} else if ( parentProperties.articleBody ) {
 			return {
 				type: null,
 				isProperty: true,
 				propertyName: 'articleBody',
-				mappings: {
-					articleBody: {
-						source: 'content',
-					},
-				},
+				mappings: {},
 			};
 		}
 	}

@@ -7,6 +7,7 @@
 import { addFilter } from '@wordpress/hooks';
 import { createHigherOrderComponent } from '@wordpress/compose';
 import { InspectorControls } from '@wordpress/block-editor';
+import { useSelect } from '@wordpress/data';
 import { PanelBody } from '@wordpress/components';
 import { Fragment } from '@wordpress/element';
 
@@ -74,9 +75,26 @@ addFilter(
  */
 const withSchemaOrgControls = createHigherOrderComponent( ( BlockEdit ) => {
 	return ( props ) => {
-		const { attributes, setAttributes, name, context } = props;
+		const { attributes, setAttributes, name, context, clientId } = props;
 		const { schemaOrg = {} } = attributes;
 		const parentSchemaContext = context[ 'schemaOrg/type' ];
+
+		// Collect schema properties already claimed by direct child blocks via isProperty,
+		// so AttributeMappingControls can exclude them from the parent's picker.
+		const claimedProperties = useSelect(
+			( select ) => {
+				if ( ! schemaOrg.type ) {
+					return [];
+				}
+				const blocks =
+					select( 'core/block-editor' ).getBlocks( clientId );
+				return blocks
+					.filter( ( b ) => b.attributes?.schemaOrg?.isProperty )
+					.map( ( b ) => b.attributes.schemaOrg.propertyName )
+					.filter( Boolean );
+			},
+			[ schemaOrg.type, clientId ]
+		);
 
 		// Auto-apply smart defaults if applicable.
 		if ( shouldAutoApplyDefaults( name, schemaOrg, parentSchemaContext ) ) {
@@ -114,14 +132,15 @@ const withSchemaOrgControls = createHigherOrderComponent( ( BlockEdit ) => {
 							}
 						/>
 
-						{ ( schemaOrg.type || parentSchemaContext?.type ) && (
+						{ /* Only show property mappings for blocks with their own schema type.
+						     Child blocks that are properties of a parent use the isProperty
+						     toggle above — their value comes from block content automatically. */ }
+						{ schemaOrg.type && (
 							<AttributeMappingControls
-								blockName={ name }
 								attributes={ attributes }
-								schemaType={
-									schemaOrg.type || parentSchemaContext?.type
-								}
+								schemaType={ schemaOrg.type }
 								mappings={ schemaOrg.mappings || {} }
+								claimedProperties={ claimedProperties }
 								onChange={ ( mappings ) =>
 									updateSchemaOrg( { mappings } )
 								}

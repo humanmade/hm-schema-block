@@ -1,5 +1,5 @@
 /**
- * Attribute Mapping Controls Component
+ * Schema Property Mapping Controls Component
  *
  * @package
  */
@@ -14,10 +14,11 @@ const AttributeMappingControls = ( {
 	schemaType,
 	mappings,
 	onChange,
+	claimedProperties = [],
 } ) => {
 	const { schemaProperties } = window.schemaOrgBlocksData || {};
 
-	// Get available properties for the schema type.
+	// Properties available for this schema type, minus any already claimed by child blocks.
 	const availableProperties = useMemo( () => {
 		if (
 			! schemaType ||
@@ -27,16 +28,18 @@ const AttributeMappingControls = ( {
 			return [];
 		}
 
-		return Object.entries( schemaProperties[ schemaType ] ).map(
-			( [ propName, propConfig ] ) => ( {
+		return Object.entries( schemaProperties[ schemaType ] )
+			.filter(
+				( [ propName ] ) => ! claimedProperties.includes( propName )
+			)
+			.map( ( [ propName, propConfig ] ) => ( {
 				label: propConfig.label || propName,
 				value: propName,
 				type: propConfig.type,
-			} )
-		);
-	}, [ schemaType, schemaProperties ] );
+			} ) );
+	}, [ schemaType, schemaProperties, claimedProperties ] );
 
-	// Get available block attributes.
+	// Block attributes available as mapping sources (excludes schemaOrg itself).
 	const availableAttributes = useMemo( () => {
 		if ( ! attributes ) {
 			return [];
@@ -51,25 +54,23 @@ const AttributeMappingControls = ( {
 	}, [ attributes ] );
 
 	const addMapping = () => {
-		if ( availableProperties.length === 0 ) {
-			return;
-		}
-
-		// Find first unmapped property.
 		const unmappedProperty = availableProperties.find(
 			( prop ) => ! mappings[ prop.value ]
 		);
-
 		if ( ! unmappedProperty ) {
 			return;
 		}
 
+		// Infer source: use attribute if the block has mappable attributes, content otherwise.
+		const hasAttributes = availableAttributes.length > 0;
 		const newMappings = {
 			...mappings,
-			[ unmappedProperty.value ]: {
-				source: 'attribute',
-				attributeName: availableAttributes[ 0 ]?.value || '',
-			},
+			[ unmappedProperty.value ]: hasAttributes
+				? {
+						source: 'attribute',
+						attributeName: availableAttributes[ 0 ]?.value || '',
+				  }
+				: { source: 'content' },
 		};
 
 		onChange( newMappings );
@@ -99,7 +100,7 @@ const AttributeMappingControls = ( {
 		<div className="schema-org-blocks-attribute-mapping">
 			<div className="schema-org-blocks-attribute-mapping__header">
 				<strong>
-					{ __( 'Attribute Mappings', 'schema-org-blocks' ) }
+					{ __( 'Schema Property Mapping', 'schema-org-blocks' ) }
 				</strong>
 				<Button
 					icon={ plus }
@@ -114,9 +115,9 @@ const AttributeMappingControls = ( {
 			</div>
 
 			{ currentMappings.length === 0 && (
-				<Notice status="warning" isDismissible={ false }>
+				<Notice status="info" isDismissible={ false }>
 					{ __(
-						'No attribute mappings configured. Add mappings to include block data in schema output.',
+						"No property mappings configured. Add mappings to populate schema properties from this block's own data. Child blocks can be assigned to properties via their own Schema.org Mapping settings.",
 						'schema-org-blocks'
 					) }
 				</Notice>
@@ -130,7 +131,14 @@ const AttributeMappingControls = ( {
 					<SelectControl
 						label={ __( 'Schema Property', 'schema-org-blocks' ) }
 						value={ property }
-						options={ availableProperties }
+						options={ [
+							{ label: property, value: property },
+							...availableProperties.filter(
+								( p ) =>
+									! mappings[ p.value ] ||
+									p.value === property
+							),
+						] }
 						onChange={ ( newProp ) => {
 							if ( newProp !== property ) {
 								const newMappings = { ...mappings };
@@ -141,43 +149,11 @@ const AttributeMappingControls = ( {
 						} }
 					/>
 
-					<SelectControl
-						label={ __( 'Source', 'schema-org-blocks' ) }
-						value={ mapping.source || 'attribute' }
-						options={ [
-							{
-								label: __(
-									'Block Attribute',
-									'schema-org-blocks'
-								),
-								value: 'attribute',
-							},
-							{
-								label: __(
-									'Block Content',
-									'schema-org-blocks'
-								),
-								value: 'content',
-							},
-							{
-								label: __(
-									'Child Blocks',
-									'schema-org-blocks'
-								),
-								value: 'context',
-							},
-						] }
-						onChange={ ( source ) =>
-							updateMapping( property, { source } )
-						}
-					/>
-
+					{ /* Source is inferred and shown as read-only text.
+					     Attribute source shows a picker; content source is implicit. */ }
 					{ mapping.source === 'attribute' && (
 						<SelectControl
-							label={ __(
-								'Attribute Name',
-								'schema-org-blocks'
-							) }
+							label={ __( 'Attribute', 'schema-org-blocks' ) }
 							value={ mapping.attributeName || '' }
 							options={ [
 								{
@@ -192,7 +168,26 @@ const AttributeMappingControls = ( {
 							onChange={ ( attributeName ) =>
 								updateMapping( property, { attributeName } )
 							}
+							help={ __(
+								'Leave empty to use block content instead.',
+								'schema-org-blocks'
+							) }
 						/>
+					) }
+
+					{ mapping.source === 'content' && (
+						<p
+							style={ {
+								fontSize: '12px',
+								color: '#757575',
+								marginTop: '0',
+							} }
+						>
+							{ __(
+								'Source: block content',
+								'schema-org-blocks'
+							) }
+						</p>
 					) }
 
 					<Button
