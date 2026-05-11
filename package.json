@@ -19,6 +19,12 @@
 		"@wordpress/e2e-test-utils-playwright": "^1.15.0",
 		"@wordpress/scripts": "^27.0.0"
 	},
+	"files": [
+		"build/**",
+		"inc/**",
+		"schema-org-blocks.php",
+		"README.md"
+	],
 	"dependencies": {
 		"@wordpress/block-editor": "^13.0.0",
 		"@wordpress/blocks": "^13.0.0",
