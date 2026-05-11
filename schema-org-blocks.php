@@ -2,7 +2,7 @@
 /**
  * Plugin Name: Schema.org Blocks
  * Description: Extend all blocks with schema.org type mapping and structured data output
- * Version: __VERSION__
+ * Version: dev-84581c1
  * Author: Human Made
  * Author URI: https://humanmade.com
  * Text Domain: schema-org-blocks
@@ -20,7 +20,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 
 define( 'SCHEMA_ORG_BLOCKS_PATH', __DIR__ );
 define( 'SCHEMA_ORG_BLOCKS_URL', plugins_url( '', __FILE__ ) );
-define( 'SCHEMA_ORG_BLOCKS_VERSION', '__VERSION__' );
+define( 'SCHEMA_ORG_BLOCKS_VERSION', 'dev-84581c1' );
 
 // Require Composer autoloader.
 if ( file_exists( __DIR__ . '/vendor/autoload.php' ) ) {
