@@ -2,7 +2,7 @@
 
 A WordPress plugin that extends all blocks with schema.org type mapping and structured data output.
 
-[![Open in WordPress Playground](https://playground.wordpress.net/badge.svg)](https://playground.wordpress.net/?blueprint-url=https://raw.githubusercontent.com/humanmade/hm-schema-block/main/blueprint.json)
+[![Open in WordPress Playground](https://raw.githubusercontent.com/adamziel/playground-preview/refs/heads/trunk/assets/playground-preview-button.svg)](https://playground.wordpress.net/?blueprint-url=https://raw.githubusercontent.com/humanmade/hm-schema-block/main/blueprint.json)
 
 ## Features
 
