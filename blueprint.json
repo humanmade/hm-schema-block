@@ -33,10 +33,6 @@
 		{
 			"step": "wp-cli",
 			"command": "wp rewrite structure /%postname%/"
-		},
-		{
-			"step": "wp-cli",
-			"command": "wp plugin activate hm-block-schema"
 		}
 	]
 }
