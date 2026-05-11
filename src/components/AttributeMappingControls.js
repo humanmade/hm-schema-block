@@ -1,35 +1,39 @@
 /**
  * Attribute Mapping Controls Component
  *
- * @package SchemaOrgBlocks
+ * @package
  */
 
 import { SelectControl, Button, Notice } from '@wordpress/components';
 import { __ } from '@wordpress/i18n';
-import { useMemo, useState } from '@wordpress/element';
+import { useMemo } from '@wordpress/element';
 import { plus, trash } from '@wordpress/icons';
 
 const AttributeMappingControls = ( {
-	blockName,
 	attributes,
 	schemaType,
 	mappings,
 	onChange,
 } ) => {
 	const { schemaProperties } = window.schemaOrgBlocksData || {};
-	const [ editingMappings, setEditingMappings ] = useState( {} );
 
 	// Get available properties for the schema type.
 	const availableProperties = useMemo( () => {
-		if ( ! schemaType || ! schemaProperties || ! schemaProperties[ schemaType ] ) {
+		if (
+			! schemaType ||
+			! schemaProperties ||
+			! schemaProperties[ schemaType ]
+		) {
 			return [];
 		}
 
-		return Object.entries( schemaProperties[ schemaType ] ).map( ( [ propName, propConfig ] ) => ( {
-			label: propConfig.label || propName,
-			value: propName,
-			type: propConfig.type,
-		} ) );
+		return Object.entries( schemaProperties[ schemaType ] ).map(
+			( [ propName, propConfig ] ) => ( {
+				label: propConfig.label || propName,
+				value: propName,
+				type: propConfig.type,
+			} )
+		);
 	}, [ schemaType, schemaProperties ] );
 
 	// Get available block attributes.
@@ -94,14 +98,18 @@ const AttributeMappingControls = ( {
 	return (
 		<div className="schema-org-blocks-attribute-mapping">
 			<div className="schema-org-blocks-attribute-mapping__header">
-				<strong>{ __( 'Attribute Mappings', 'schema-org-blocks' ) }</strong>
+				<strong>
+					{ __( 'Attribute Mappings', 'schema-org-blocks' ) }
+				</strong>
 				<Button
 					icon={ plus }
 					label={ __( 'Add mapping', 'schema-org-blocks' ) }
 					onClick={ addMapping }
 					variant="secondary"
 					size="small"
-					disabled={ currentMappings.length >= availableProperties.length }
+					disabled={
+						currentMappings.length >= availableProperties.length
+					}
 				/>
 			</div>
 
@@ -115,7 +123,10 @@ const AttributeMappingControls = ( {
 			) }
 
 			{ currentMappings.map( ( [ property, mapping ] ) => (
-				<div key={ property } className="schema-org-blocks-attribute-mapping__row">
+				<div
+					key={ property }
+					className="schema-org-blocks-attribute-mapping__row"
+				>
 					<SelectControl
 						label={ __( 'Schema Property', 'schema-org-blocks' ) }
 						value={ property }
@@ -134,22 +145,53 @@ const AttributeMappingControls = ( {
 						label={ __( 'Source', 'schema-org-blocks' ) }
 						value={ mapping.source || 'attribute' }
 						options={ [
-							{ label: __( 'Block Attribute', 'schema-org-blocks' ), value: 'attribute' },
-							{ label: __( 'Block Content', 'schema-org-blocks' ), value: 'content' },
-							{ label: __( 'Child Blocks', 'schema-org-blocks' ), value: 'context' },
+							{
+								label: __(
+									'Block Attribute',
+									'schema-org-blocks'
+								),
+								value: 'attribute',
+							},
+							{
+								label: __(
+									'Block Content',
+									'schema-org-blocks'
+								),
+								value: 'content',
+							},
+							{
+								label: __(
+									'Child Blocks',
+									'schema-org-blocks'
+								),
+								value: 'context',
+							},
 						] }
-						onChange={ ( source ) => updateMapping( property, { source } ) }
+						onChange={ ( source ) =>
+							updateMapping( property, { source } )
+						}
 					/>
 
 					{ mapping.source === 'attribute' && (
 						<SelectControl
-							label={ __( 'Attribute Name', 'schema-org-blocks' ) }
+							label={ __(
+								'Attribute Name',
+								'schema-org-blocks'
+							) }
 							value={ mapping.attributeName || '' }
 							options={ [
-								{ label: __( 'Select attribute...', 'schema-org-blocks' ), value: '' },
+								{
+									label: __(
+										'Select attribute…',
+										'schema-org-blocks'
+									),
+									value: '',
+								},
 								...availableAttributes,
 							] }
-							onChange={ ( attributeName ) => updateMapping( property, { attributeName } ) }
+							onChange={ ( attributeName ) =>
+								updateMapping( property, { attributeName } )
+							}
 						/>
 					) }
 

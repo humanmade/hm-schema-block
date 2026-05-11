@@ -1,18 +1,21 @@
 /**
  * Schema.org Blocks - Block Editor Extensions
  *
- * @package SchemaOrgBlocks
+ * @package
  */
 
 import { addFilter } from '@wordpress/hooks';
 import { createHigherOrderComponent } from '@wordpress/compose';
-import { InspectorControls, BlockControls } from '@wordpress/block-editor';
+import { InspectorControls } from '@wordpress/block-editor';
 import { PanelBody } from '@wordpress/components';
 import { Fragment } from '@wordpress/element';
 
 import SchemaTypeSelector from './components/SchemaTypeSelector';
 import AttributeMappingControls from './components/AttributeMappingControls';
-import { getSmartDefaults, shouldAutoApplyDefaults } from './utils/smart-defaults';
+import {
+	getSmartDefaults,
+	shouldAutoApplyDefaults,
+} from './utils/smart-defaults';
 
 import './editor.scss';
 
@@ -52,7 +55,7 @@ addFilter(
 		if ( ! settings.providesContext ) {
 			settings.providesContext = {};
 		}
-		settings.providesContext['schemaOrg/type'] = 'schemaOrg';
+		settings.providesContext[ 'schemaOrg/type' ] = 'schemaOrg';
 
 		// Use context.
 		if ( ! settings.usesContext ) {
@@ -73,12 +76,15 @@ const withSchemaOrgControls = createHigherOrderComponent( ( BlockEdit ) => {
 	return ( props ) => {
 		const { attributes, setAttributes, name, context } = props;
 		const { schemaOrg = {} } = attributes;
-		const parentSchemaContext = context['schemaOrg/type'];
+		const parentSchemaContext = context[ 'schemaOrg/type' ];
 
 		// Auto-apply smart defaults if applicable.
 		if ( shouldAutoApplyDefaults( name, schemaOrg, parentSchemaContext ) ) {
 			const defaults = getSmartDefaults( name, parentSchemaContext );
-			if ( defaults && JSON.stringify( schemaOrg ) !== JSON.stringify( defaults ) ) {
+			if (
+				defaults &&
+				JSON.stringify( schemaOrg ) !== JSON.stringify( defaults )
+			) {
 				setAttributes( { schemaOrg: defaults } );
 			}
 		}
@@ -96,10 +102,7 @@ const withSchemaOrgControls = createHigherOrderComponent( ( BlockEdit ) => {
 			<Fragment>
 				<BlockEdit { ...props } />
 				<InspectorControls>
-					<PanelBody
-						title="Schema.org Mapping"
-						initialOpen={ false }
-					>
+					<PanelBody title="Schema.org Mapping" initialOpen={ false }>
 						<SchemaTypeSelector
 							value={ schemaOrg.type }
 							parentSchemaType={ parentSchemaContext?.type }
@@ -115,9 +118,13 @@ const withSchemaOrgControls = createHigherOrderComponent( ( BlockEdit ) => {
 							<AttributeMappingControls
 								blockName={ name }
 								attributes={ attributes }
-								schemaType={ schemaOrg.type || parentSchemaContext?.type }
+								schemaType={
+									schemaOrg.type || parentSchemaContext?.type
+								}
 								mappings={ schemaOrg.mappings || {} }
-								onChange={ ( mappings ) => updateSchemaOrg( { mappings } ) }
+								onChange={ ( mappings ) =>
+									updateSchemaOrg( { mappings } )
+								}
 							/>
 						) }
 					</PanelBody>

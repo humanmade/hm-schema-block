@@ -1,13 +1,13 @@
 /**
  * Smart defaults utility for common block types.
  *
- * @package SchemaOrgBlocks
+ * @package
  */
 
 /**
  * Get smart defaults for a block type based on parent schema context.
  *
- * @param {string} blockName Block name.
+ * @param {string}      blockName           Block name.
  * @param {Object|null} parentSchemaContext Parent schema context.
  * @return {Object|null} Smart defaults or null.
  */
@@ -24,14 +24,22 @@ export function getSmartDefaults( blockName, parentSchemaContext ) {
 	// Smart defaults for core/image.
 	if ( blockName === 'core/image' ) {
 		// Check if parent has an image property that accepts ImageObject.
-		const imageProps = Object.entries( parentProperties ).filter( ( [ propName, propConfig ] ) => {
-			const types = Array.isArray( propConfig.type ) ? propConfig.type : [ propConfig.type ];
-			return types.includes( 'ImageObject' ) || types.includes( 'URL' );
-		} );
+		const imageProps = Object.entries( parentProperties ).filter(
+			( [ , propConfig ] ) => {
+				const types = Array.isArray( propConfig.type )
+					? propConfig.type
+					: [ propConfig.type ];
+				return (
+					types.includes( 'ImageObject' ) || types.includes( 'URL' )
+				);
+			}
+		);
 
 		if ( imageProps.length > 0 ) {
 			const [ propName, propConfig ] = imageProps[ 0 ];
-			const types = Array.isArray( propConfig.type ) ? propConfig.type : [ propConfig.type ];
+			const types = Array.isArray( propConfig.type )
+				? propConfig.type
+				: [ propConfig.type ];
 
 			// If ImageObject is accepted, use it. Otherwise map as URL.
 			if ( types.includes( 'ImageObject' ) ) {
@@ -58,30 +66,33 @@ export function getSmartDefaults( blockName, parentSchemaContext ) {
 						},
 					},
 				};
-			} else {
-				// Map URL directly.
-				return {
-					type: null,
-					isProperty: true,
-					propertyName: propName,
-					mappings: {
-						[ propName ]: {
-							source: 'attribute',
-							attributeName: 'url',
-						},
-					},
-				};
 			}
+			// Map URL directly.
+			return {
+				type: null,
+				isProperty: true,
+				propertyName: propName,
+				mappings: {
+					[ propName ]: {
+						source: 'attribute',
+						attributeName: 'url',
+					},
+				},
+			};
 		}
 	}
 
 	// Smart defaults for core/button.
 	if ( blockName === 'core/button' ) {
 		// Check for URL properties.
-		const urlProps = Object.entries( parentProperties ).filter( ( [ propName, propConfig ] ) => {
-			const types = Array.isArray( propConfig.type ) ? propConfig.type : [ propConfig.type ];
-			return types.includes( 'URL' );
-		} );
+		const urlProps = Object.entries( parentProperties ).filter(
+			( [ , propConfig ] ) => {
+				const types = Array.isArray( propConfig.type )
+					? propConfig.type
+					: [ propConfig.type ];
+				return types.includes( 'URL' );
+			}
+		);
 
 		if ( urlProps.length > 0 ) {
 			const [ propName ] = urlProps[ 0 ];
@@ -172,17 +183,26 @@ export function getSmartDefaults( blockName, parentSchemaContext ) {
 /**
  * Check if smart defaults should be auto-applied.
  *
- * @param {string} blockName Block name.
- * @param {Object} currentSchemaOrg Current schemaOrg attribute.
+ * @param {string}      blockName           Block name.
+ * @param {Object}      currentSchemaOrg    Current schemaOrg attribute.
  * @param {Object|null} parentSchemaContext Parent schema context.
  * @return {boolean} Whether to auto-apply defaults.
  */
-export function shouldAutoApplyDefaults( blockName, currentSchemaOrg, parentSchemaContext ) {
+export function shouldAutoApplyDefaults(
+	blockName,
+	currentSchemaOrg,
+	parentSchemaContext
+) {
 	// Only apply if:
 	// 1. Block has no schema configuration yet.
 	// 2. There's a parent schema context.
 	// 3. Block is a supported type.
-	const supportedBlocks = [ 'core/image', 'core/button', 'core/heading', 'core/paragraph' ];
+	const supportedBlocks = [
+		'core/image',
+		'core/button',
+		'core/heading',
+		'core/paragraph',
+	];
 
 	if ( ! supportedBlocks.includes( blockName ) ) {
 		return false;

@@ -1,7 +1,7 @@
 /**
  * Schema Type Selector Component
  *
- * @package SchemaOrgBlocks
+ * @package
  */
 
 import { SelectControl, ToggleControl, Notice } from '@wordpress/components';
@@ -26,25 +26,32 @@ const SchemaTypeSelector = ( {
 
 		// If there's a parent schema type, filter to valid subtypes.
 		if ( parentSchemaType ) {
-			const parentProperties = schemaProperties?.[ parentSchemaType ] || {};
+			const parentProperties =
+				schemaProperties?.[ parentSchemaType ] || {};
 			const validTypes = new Set();
 
 			// Add types that are valid for parent properties.
-			Object.entries( parentProperties ).forEach( ( [ propName, propConfig ] ) => {
-				const propTypes = Array.isArray( propConfig.type )
-					? propConfig.type
-					: [ propConfig.type ];
+			Object.entries( parentProperties ).forEach(
+				( [ , propConfig ] ) => {
+					const propTypes = Array.isArray( propConfig.type )
+						? propConfig.type
+						: [ propConfig.type ];
 
-				propTypes.forEach( ( type ) => {
-					validTypes.add( type );
-					// Also add subtypes.
-					Object.entries( schemaTypes ).forEach( ( [ typeName, typeConfig ] ) => {
-						if ( isSubtypeOf( typeName, type, schemaTypes ) ) {
-							validTypes.add( typeName );
-						}
+					propTypes.forEach( ( type ) => {
+						validTypes.add( type );
+						// Also add subtypes.
+						Object.entries( schemaTypes ).forEach(
+							( [ typeName ] ) => {
+								if (
+									isSubtypeOf( typeName, type, schemaTypes )
+								) {
+									validTypes.add( typeName );
+								}
+							}
+						);
 					} );
-				} );
-			} );
+				}
+			);
 
 			return Array.from( validTypes ).map( ( type ) => ( {
 				label: schemaTypes[ type ]?.label || type,
@@ -53,10 +60,12 @@ const SchemaTypeSelector = ( {
 		}
 
 		// Otherwise, show all top-level types.
-		return Object.entries( schemaTypes ).map( ( [ typeName, typeConfig ] ) => ( {
-			label: typeConfig.label || typeName,
-			value: typeName,
-		} ) );
+		return Object.entries( schemaTypes ).map(
+			( [ typeName, typeConfig ] ) => ( {
+				label: typeConfig.label || typeName,
+				value: typeName,
+			} )
+		);
 	}, [ parentSchemaType, schemaTypes, schemaProperties ] );
 
 	// Get available property names if parent has schema type.
@@ -66,10 +75,12 @@ const SchemaTypeSelector = ( {
 		}
 
 		const properties = schemaProperties[ parentSchemaType ] || {};
-		return Object.entries( properties ).map( ( [ propName, propConfig ] ) => ( {
-			label: propConfig.label || propName,
-			value: propName,
-		} ) );
+		return Object.entries( properties ).map(
+			( [ propName, propConfig ] ) => ( {
+				label: propConfig.label || propName,
+				value: propName,
+			} )
+		);
 	}, [ parentSchemaType, schemaProperties ] );
 
 	const handleTypeChange = ( newType ) => {
@@ -88,7 +99,10 @@ const SchemaTypeSelector = ( {
 		<div className="schema-org-blocks-type-selector">
 			{ parentSchemaType && (
 				<Notice status="info" isDismissible={ false }>
-					{ __( 'Parent block has schema type: ', 'schema-org-blocks' ) }
+					{ __(
+						'Parent block has schema type: ',
+						'schema-org-blocks'
+					) }
 					<strong>{ parentSchemaType }</strong>
 				</Notice>
 			) }
@@ -96,7 +110,10 @@ const SchemaTypeSelector = ( {
 			{ parentSchemaType && availableProperties.length > 0 && (
 				<>
 					<ToggleControl
-						label={ __( 'Map as property of parent', 'schema-org-blocks' ) }
+						label={ __(
+							'Map as property of parent',
+							'schema-org-blocks'
+						) }
 						checked={ isProperty }
 						onChange={ handlePropertyToggle }
 						help={ __(
@@ -110,10 +127,18 @@ const SchemaTypeSelector = ( {
 							label={ __( 'Property Name', 'schema-org-blocks' ) }
 							value={ propertyName || '' }
 							options={ [
-								{ label: __( 'Select a property...', 'schema-org-blocks' ), value: '' },
+								{
+									label: __(
+										'Select a property…',
+										'schema-org-blocks'
+									),
+									value: '',
+								},
 								...availableProperties,
 							] }
-							onChange={ ( prop ) => onPropertyChange( prop, true ) }
+							onChange={ ( prop ) =>
+								onPropertyChange( prop, true )
+							}
 						/>
 					) }
 				</>
@@ -134,7 +159,10 @@ const SchemaTypeSelector = ( {
 									'Select a schema type or leave empty to use parent type',
 									'schema-org-blocks'
 							  )
-							: __( 'Select a schema.org type for this block', 'schema-org-blocks' )
+							: __(
+									'Select a schema.org type for this block',
+									'schema-org-blocks'
+							  )
 					}
 				/>
 			) }
@@ -145,8 +173,8 @@ const SchemaTypeSelector = ( {
 /**
  * Check if a type is a subtype of another.
  *
- * @param {string} type Type to check.
- * @param {string} parentType Parent type.
+ * @param {string} type        Type to check.
+ * @param {string} parentType  Parent type.
  * @param {Object} schemaTypes All schema types.
  * @return {boolean} Whether type is subtype of parentType.
  */
