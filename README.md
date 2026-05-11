@@ -2,6 +2,8 @@
 
 A WordPress plugin that extends all blocks with schema.org type mapping and structured data output.
 
+[![Open in WordPress Playground](https://playground.wordpress.net/badge.svg)](https://playground.wordpress.net/?blueprint-url=https://raw.githubusercontent.com/humanmade/hm-schema-block/main/blueprint.json)
+
 ## Features
 
 - 🎯 **Universal Block Extension**: Adds schema.org mapping to all WordPress blocks

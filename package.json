@@ -5,9 +5,11 @@
 	"scripts": {
 		"build": "wp-scripts build",
 		"start": "wp-scripts start",
+		"format": "wp-scripts format",
 		"lint:js": "wp-scripts lint-js",
-		"format:js": "wp-scripts format-js",
-		"playground:start": "npx @wp-playground/cli server --blueprint=blueprint.json --auto-mount",
+		"lint:css": "wp-scripts lint-style",
+		"plugin-zip": "wp-scripts plugin-zip",
+		"playground:start": "npx --yes @wp-playground/cli@latest server --blueprint=blueprint.json --port=9400 --auto-mount",
 		"test:e2e": "playwright test",
 		"test:e2e:debug": "playwright test --debug",
 		"test:e2e:watch": "playwright test --ui"
