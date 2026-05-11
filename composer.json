@@ -1,0 +1,23 @@
+{
+	"name": "humanmade/schema-org-blocks",
+	"description": "Extend all blocks with schema.org type mapping and structured data output",
+	"type": "wordpress-plugin",
+	"license": "GPL-2.0-or-later",
+	"authors": [
+		{
+			"name": "Human Made",
+			"email": "hello@humanmade.com"
+		}
+	],
+	"require": {
+		"php": ">=8.0"
+	},
+	"autoload": {
+		"files": [
+			"inc/namespace.php",
+			"inc/schema-types.php",
+			"inc/block-extensions.php",
+			"inc/schema-output.php"
+		]
+	}
+}

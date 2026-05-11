@@ -1,0 +1,74 @@
+/**
+ * Editor styles for Schema.org Blocks
+ *
+ * @package SchemaOrgBlocks
+ */
+
+.schema-org-blocks-type-selector {
+	.components-notice {
+		margin: 0 0 16px;
+	}
+
+	.components-toggle-control {
+		margin-bottom: 16px;
+	}
+}
+
+.schema-org-blocks-attribute-mapping {
+	&__header {
+		display: flex;
+		justify-content: space-between;
+		align-items: center;
+		margin-bottom: 12px;
+
+		strong {
+			font-size: 13px;
+			font-weight: 500;
+		}
+	}
+
+	&__row {
+		padding: 12px;
+		margin-bottom: 12px;
+		background: #f0f0f0;
+		border-radius: 4px;
+		border: 1px solid #ddd;
+
+		.components-base-control {
+			margin-bottom: 12px;
+
+			&:last-child {
+				margin-bottom: 0;
+			}
+		}
+
+		.components-button.is-destructive {
+			margin-top: 8px;
+		}
+	}
+
+	.components-notice {
+		margin: 12px 0;
+	}
+}
+
+// Schema badge in block toolbar (optional visual indicator).
+.schema-org-blocks-badge {
+	display: inline-flex;
+	align-items: center;
+	padding: 2px 8px;
+	background: #007cba;
+	color: #fff;
+	border-radius: 3px;
+	font-size: 11px;
+	font-weight: 500;
+	margin-left: 8px;
+
+	&--property {
+		background: #00a32a;
+	}
+
+	&--inherited {
+		background: #949494;
+	}
+}

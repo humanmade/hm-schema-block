@@ -1,0 +1,35 @@
+<?xml version="1.0"?>
+<ruleset name="Schema.org Blocks">
+	<description>Coding standards for Schema.org Blocks plugin</description>
+
+	<!-- Check all PHP files in plugin -->
+	<file>.</file>
+
+	<!-- Exclude build and vendor directories -->
+	<exclude-pattern>*/build/*</exclude-pattern>
+	<exclude-pattern>*/node_modules/*</exclude-pattern>
+	<exclude-pattern>*/vendor/*</exclude-pattern>
+
+	<!-- Use WordPress coding standards -->
+	<rule ref="WordPress-Core">
+		<exclude name="WordPress.Files.FileName.InvalidClassFileName" />
+		<exclude name="WordPress.Files.FileName.NotHyphenatedLowercase" />
+	</rule>
+
+	<rule ref="WordPress-Docs" />
+	<rule ref="WordPress-Extra" />
+
+	<!-- Allow short array syntax -->
+	<rule ref="Generic.Arrays.DisallowShortArraySyntax.Found">
+		<severity>0</severity>
+	</rule>
+
+	<!-- Minimum PHP version -->
+	<config name="minimum_supported_wp_version" value="6.0"/>
+	<config name="testVersion" value="8.0-"/>
+
+	<!-- Show sniff codes in all reports -->
+	<arg value="ps"/>
+	<arg name="colors"/>
+	<arg name="extensions" value="php"/>
+</ruleset>
