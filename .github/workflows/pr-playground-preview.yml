@@ -35,12 +35,15 @@ jobs:
             - name: Build
               run: npm run build
 
+            - name: Create plugin ZIP
+              run: npm run plugin-zip
+
             - name: Push built files to PR branch
               run: |
                   git config user.name "github-actions[bot]"
                   git config user.email "github-actions[bot]@users.noreply.github.com"
                   git checkout -B pr-${{ github.event.pull_request.number }}-built
-                  git add -f build/
+                  git add -f build/ schema-org-blocks.zip
                   git add schema-org-blocks.php
                   git commit -m "Build for PR #${{ github.event.pull_request.number }} - ${{ github.sha }}"
                   git push origin pr-${{ github.event.pull_request.number }}-built --force
@@ -67,7 +70,10 @@ jobs:
                         "step": "installPlugin",
                         "pluginZipFile": {
                           "resource": "url",
-                          "url": "https://github-proxy.com/proxy/?repo=${{ github.repository }}&branch=pr-${{ github.event.pull_request.number }}-built"
+                          "url": "https://raw.githubusercontent.com/${{ github.repository }}/pr-${{ github.event.pull_request.number }}-built/schema-org-blocks.zip"
+                        },
+                        "options": {
+                          "activate": true
                         }
                       }
                     ]

@@ -14,7 +14,7 @@ jobs:
         name: 'Update release branch'
         runs-on: ubuntu-latest
         steps:
-            - name: Check out project
+            - name: Checkout
               uses: actions/checkout@v4
 
             - name: Set up Node
@@ -23,12 +23,24 @@ jobs:
                   node-version: 24
                   cache: 'npm'
 
-            - name: Merge and build
-              uses: humanmade/hm-github-actions/.github/actions/build-to-release-branch@04c32a93e52ae987095f144105745a501d6207c8
-              with:
-                  source_branch: main
-                  release_branch: release
-                  built_asset_paths: build
-                  build_script: |
-                      npm i
-                      npm run build
+            - name: Install dependencies
+              run: npm i
+
+            - name: Set version from commit SHA
+              run: sed -i "s/__VERSION__/dev-$(git rev-parse --short HEAD)/g" schema-org-blocks.php
+
+            - name: Build
+              run: npm run build
+
+            - name: Create plugin ZIP
+              run: npm run plugin-zip
+
+            - name: Push to release branch
+              run: |
+                  git config user.name "github-actions[bot]"
+                  git config user.email "github-actions[bot]@users.noreply.github.com"
+                  git checkout -B release
+                  git add -f build/ schema-org-blocks.zip
+                  git add schema-org-blocks.php
+                  git diff --cached --quiet || git commit -m "Release build from ${{ github.sha }}"
+                  git push origin release --force
