@@ -12,6 +12,7 @@ test.describe( 'Schema.org Block Mapping', () => {
 		await editor.setPreferences( 'core/edit-post', {
 			welcomeGuide: false,
 		} );
+		await editor.openDocumentSettingsSidebar();
 	} );
 
 	test( 'should show schema mapping panel in inspector', async ( {
