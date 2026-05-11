@@ -7,12 +7,14 @@
 const { test, expect } = require( '@wordpress/e2e-test-utils-playwright' );
 
 test.describe( 'Schema.org Block Mapping', () => {
-	test.beforeEach( async ( { admin, editor } ) => {
+	test.beforeEach( async ( { admin, editor, page } ) => {
 		await admin.createNewPost();
 		await editor.setPreferences( 'core/edit-post', {
 			welcomeGuide: false,
 		} );
 		await editor.openDocumentSettingsSidebar();
+		// Switch to the Block inspector tab so block-specific panels are visible.
+		await page.getByRole( 'tab', { name: 'Block' } ).click();
 	} );
 
 	test( 'should show schema mapping panel in inspector', async ( {
