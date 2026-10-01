@@ -162,9 +162,14 @@ function build_schema_object( array $block ) : array {
 			continue;
 		}
 
-		$value = null !== $child_config['type']
-			? build_schema_object( $child )
-			: get_property_value( $child, $property );
+		if ( null === $child_config['type'] ) {
+			$value = get_property_value( $child, $property );
+		} else {
+			// A typed child with nothing mapped falls back to its text, as an object of its type.
+			$value = build_schema_object( $child );
+			$text  = $value ? null : get_property_value( $child, $property );
+			$value = is_empty_value( $text ) ? $value : wrap_value( $child_config['type'], $text );
+		}
 
 		if ( ! is_empty_value( $value ) ) {
 			$from_children[ $property ][] = coerce_value( $type, $property, $value );
@@ -281,8 +286,20 @@ function coerce_value( string $type, string $property, $value ) {
 		return $value;
 	}
 
-	$target     = $expected[0];
-	$properties = SchemaTypes\get_type_properties( $target );
+	return wrap_value( $expected[0], $value );
+}
+
+/**
+ * Wrap a plain value in an object of a schema type.
+ *
+ * URLs go in contentUrl or url when the type has one, other values in text or name.
+ *
+ * @param string                $type  Schema type.
+ * @param string|int|float|bool $value Value.
+ * @return array<string, mixed>
+ */
+function wrap_value( string $type, $value ) : array {
+	$properties = SchemaTypes\get_type_properties( $type );
 
 	$is_url = is_string( $value ) && preg_match( '#^https?://#i', $value ) && false !== filter_var( $value, FILTER_VALIDATE_URL );
 
@@ -293,7 +310,7 @@ function coerce_value( string $type, string $property, $value ) {
 	}
 
 	return [
-		'@type' => $target,
+		'@type' => $type,
 		$key    => $value,
 	];
 }
