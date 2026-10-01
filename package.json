@@ -28,6 +28,7 @@
 		"build/**",
 		"inc/**",
 		"patterns/**",
+		"skills/**",
 		"schema-org-blocks.php",
 		"README.md"
 	],
