@@ -45,6 +45,10 @@ jobs:
                   git checkout -B pr-${{ github.event.pull_request.number }}-built
                   git add -f build/ schema-org-blocks.zip
                   git add schema-org-blocks.php
+                  if git diff --staged --quiet; then
+                    echo "No build changes to push."
+                    exit 0
+                  fi
                   git commit -m "Build for PR #${{ github.event.pull_request.number }} - ${{ github.sha }}"
                   git push origin pr-${{ github.event.pull_request.number }}-built --force
 
@@ -54,8 +58,14 @@ jobs:
                   BLUEPRINT=$(cat <<'EOF'
                   {
                     "landingPage": "/wp-admin/post-new.php",
-                    "login": true,
+                    "preferredVersions": {
+                      "php": "8.3",
+                      "wp": "latest"
+                    },
                     "steps": [
+                      {
+                        "step": "login"
+                      },
                       {
                         "step": "installTheme",
                         "themeData": {
