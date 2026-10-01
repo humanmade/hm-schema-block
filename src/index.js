@@ -162,11 +162,21 @@ const withSchemaOrgControls = createHigherOrderComponent( ( BlockEdit ) => {
 							isProperty={ schemaOrg.isProperty }
 							propertyName={ schemaOrg.propertyName }
 							onPropertyChange={ ( propertyName, isProperty ) =>
-								updateSchemaOrg( {
-									propertyName,
-									isProperty,
-									skipDefaults: ! isProperty,
-								} )
+								updateSchemaOrg(
+									isProperty
+										? {
+												propertyName,
+												isProperty,
+												skipDefaults: false,
+										  }
+										: {
+												type: null,
+												mappings: {},
+												propertyName: null,
+												isProperty: false,
+												skipDefaults: true,
+										  }
+								)
 							}
 						/>
 
