@@ -200,7 +200,9 @@ function get_property_value( array $block, string $property ) {
 /**
  * Resolve a property mapping against a block.
  *
- * An attribute mapping with no attribute name falls back to the block's text content.
+ * Sources: `attribute` (a block attribute; with no attribute name, the block's text),
+ * `content` (the block's text), `innerBlocks` (the text of its inner blocks only, e.g. a
+ * details block without its summary) and `post` (a field of the current post: `title` or `url`).
  *
  * @param array<string, mixed> $block   Parsed block.
  * @param array<string, mixed> $mapping Mapping, e.g. [ 'source' => 'attribute', 'attributeName' => 'url' ].
@@ -216,6 +218,38 @@ function resolve_mapping( array $block, array $mapping ) {
 
 	if ( 'attribute' === $source || 'content' === $source ) {
 		return BlockValues\get_text( BlockValues\get_html( $block ) );
+	}
+
+	if ( 'innerBlocks' === $source ) {
+		$html = array_map( 'SchemaOrgBlocks\\BlockValues\\get_html', BlockValues\get_inner_blocks( $block ) );
+		return BlockValues\get_text( implode( "\n", $html ) );
+	}
+
+	if ( 'post' === $source ) {
+		return get_post_field_value( (string) ( $mapping['field'] ?? 'title' ) );
+	}
+
+	return null;
+}
+
+/**
+ * Get a field of the current post for a `post` mapping.
+ *
+ * @param string $field `title` or `url`.
+ * @return string|null
+ */
+function get_post_field_value( string $field ) : ?string {
+	$post = get_post();
+
+	if ( ! $post ) {
+		return null;
+	}
+
+	switch ( $field ) {
+		case 'title':
+			return BlockValues\get_text( get_the_title( $post ) );
+		case 'url':
+			return get_permalink( $post ) ?: null;
 	}
 
 	return null;

@@ -149,8 +149,15 @@ const AttributeMappingControls = ( {
 						} }
 					/>
 
-					{ /* Source is inferred and shown as read-only text.
-					     Attribute source shows a picker; content source is implicit. */ }
+					<SelectControl
+						label={ __( 'Source', 'schema-org-blocks' ) }
+						value={ getSourceKey( mapping ) }
+						options={ SOURCES }
+						onChange={ ( key ) =>
+							updateMapping( property, parseSourceKey( key ) )
+						}
+					/>
+
 					{ mapping.source === 'attribute' && (
 						<SelectControl
 							label={ __( 'Attribute', 'schema-org-blocks' ) }
@@ -175,21 +182,6 @@ const AttributeMappingControls = ( {
 						/>
 					) }
 
-					{ mapping.source === 'content' && (
-						<p
-							style={ {
-								fontSize: '12px',
-								color: '#757575',
-								marginTop: '0',
-							} }
-						>
-							{ __(
-								'Source: block content',
-								'schema-org-blocks'
-							) }
-						</p>
-					) }
-
 					<Button
 						icon={ trash }
 						label={ __( 'Remove mapping', 'schema-org-blocks' ) }
@@ -203,6 +195,43 @@ const AttributeMappingControls = ( {
 		</div>
 	);
 };
+
+/**
+ * Mapping sources offered in the Source picker. `post:` keys carry the post field.
+ */
+const SOURCES = [
+	{ label: __( 'Block attribute', 'schema-org-blocks' ), value: 'attribute' },
+	{ label: __( 'Block text', 'schema-org-blocks' ), value: 'content' },
+	{
+		label: __( 'Inner blocks text', 'schema-org-blocks' ),
+		value: 'innerBlocks',
+	},
+	{ label: __( 'Post title', 'schema-org-blocks' ), value: 'post:title' },
+	{ label: __( 'Post URL', 'schema-org-blocks' ), value: 'post:url' },
+];
+
+/**
+ * Get the Source picker value for a mapping.
+ *
+ * @param {Object} mapping Property mapping.
+ * @return {string} Source key.
+ */
+function getSourceKey( mapping ) {
+	return mapping.source === 'post'
+		? `post:${ mapping.field || 'title' }`
+		: mapping.source;
+}
+
+/**
+ * Turn a Source picker value into mapping fields.
+ *
+ * @param {string} key Source key.
+ * @return {Object} Mapping fields to merge.
+ */
+function parseSourceKey( key ) {
+	const [ source, field ] = key.split( ':' );
+	return field ? { source, field } : { source, field: undefined };
+}
 
 /**
  * Format attribute name for display.
