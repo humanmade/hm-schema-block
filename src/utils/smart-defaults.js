@@ -40,7 +40,7 @@ const RULES = {
 								attributeName: 'caption',
 							},
 						},
-				  }
+					}
 				: attributeProperty( propertyName, 'url' ),
 	},
 	'core/button': {
@@ -185,9 +185,9 @@ export function getSmartDefaults( blockName, parentType ) {
 export function isConfigured( schemaOrg = {} ) {
 	return Boolean(
 		schemaOrg.type ||
-			schemaOrg.isProperty ||
-			schemaOrg.skipDefaults ||
-			Object.keys( schemaOrg.mappings || {} ).length
+		schemaOrg.isProperty ||
+		schemaOrg.skipDefaults ||
+		Object.keys( schemaOrg.mappings || {} ).length
 	);
 }
 

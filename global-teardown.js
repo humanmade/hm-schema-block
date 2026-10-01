@@ -1,4 +1,3 @@
-/* global globalThis */
 /**
  * Shuts down the Playground instance started by global-setup.js, if any.
  */

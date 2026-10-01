@@ -55,6 +55,7 @@ const SchemaPresets = ( { clientId, blockName, schemaOrg } ) => {
 		<div className="schema-org-blocks-presets">
 			{ showPresets && (
 				<BaseControl
+					__nextHasNoMarginBottom
 					id={ `schema-org-blocks-presets-${ clientId }` }
 					label={ __( 'Quick setup', 'schema-org-blocks' ) }
 					help={ __(

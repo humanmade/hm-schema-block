@@ -2,6 +2,9 @@
 	"name": "schema-org-blocks",
 	"version": "1.0.0",
 	"description": "Extend all blocks with schema.org type mapping and structured data output",
+	"engines": {
+		"node": "^22.22.2 || >=24.15.0"
+	},
 	"scripts": {
 		"build": "wp-scripts build",
 		"start": "wp-scripts start",
@@ -17,7 +20,7 @@
 	"devDependencies": {
 		"@playwright/test": "^1.63.0",
 		"@wordpress/e2e-test-utils-playwright": "^2.1.0",
-		"@wordpress/scripts": "^27.0.0",
+		"@wordpress/scripts": "^36.0.0",
 		"@wp-playground/cli": "^3.1.0"
 	},
 	"files": [
@@ -27,6 +30,14 @@
 		"README.md"
 	],
 	"dependencies": {
-		"@wordpress/icons": "^13.0.0"
+		"@wordpress/block-editor": "^18.0.0",
+		"@wordpress/blocks": "^16.1.0",
+		"@wordpress/components": "^41.0.0",
+		"@wordpress/compose": "^8.9.0",
+		"@wordpress/data": "^10.56.0",
+		"@wordpress/element": "^8.8.0",
+		"@wordpress/hooks": "^4.56.0",
+		"@wordpress/i18n": "^6.29.0",
+		"@wordpress/icons": "^17.0.0"
 	}
 }

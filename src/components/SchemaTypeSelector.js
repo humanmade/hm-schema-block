@@ -5,8 +5,8 @@
  */
 
 import { SelectControl, ToggleControl, Notice } from '@wordpress/components';
-import { __ } from '@wordpress/i18n';
-import { useMemo } from '@wordpress/element';
+import { __, sprintf } from '@wordpress/i18n';
+import { createInterpolateElement, useMemo } from '@wordpress/element';
 
 const SchemaTypeSelector = ( {
 	value,
@@ -84,17 +84,24 @@ const SchemaTypeSelector = ( {
 		<div className="schema-org-blocks-type-selector">
 			{ parentSchemaType && (
 				<Notice status="info" isDismissible={ false }>
-					{ __(
-						'Parent block has schema type: ',
-						'schema-org-blocks'
+					{ createInterpolateElement(
+						sprintf(
+							/* translators: %s: schema.org type name of the parent block. */
+							__(
+								'Parent block has schema type: %s',
+								'schema-org-blocks'
+							),
+							'<strong>' + parentSchemaType + '</strong>'
+						),
+						{ strong: <strong /> }
 					) }
-					<strong>{ parentSchemaType }</strong>
 				</Notice>
 			) }
 
 			{ parentSchemaType && availableProperties.length > 0 && (
 				<>
 					<ToggleControl
+						__nextHasNoMarginBottom
 						label={ __(
 							'Map as property of parent',
 							'schema-org-blocks'
@@ -110,6 +117,8 @@ const SchemaTypeSelector = ( {
 					{ isProperty && (
 						<>
 							<SelectControl
+								__next40pxDefaultSize
+								__nextHasNoMarginBottom
 								label={ __(
 									'Property Name',
 									'schema-org-blocks'
@@ -148,6 +157,8 @@ const SchemaTypeSelector = ( {
 
 			{ ( ! isProperty || availableTypes.length > 0 ) && (
 				<SelectControl
+					__next40pxDefaultSize
+					__nextHasNoMarginBottom
 					label={
 						isProperty
 							? __( 'Value Type', 'schema-org-blocks' )
@@ -164,11 +175,11 @@ const SchemaTypeSelector = ( {
 							? __(
 									"Pick a type to output this property as a nested object. Leave as None to use the block's text.",
 									'schema-org-blocks'
-							  )
+								)
 							: __(
 									'Select a schema.org type for this block',
 									'schema-org-blocks'
-							  )
+								)
 					}
 				/>
 			) }
