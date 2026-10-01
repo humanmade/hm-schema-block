@@ -214,6 +214,28 @@ const SOURCES = [
 	},
 	{ label: __( 'Post title', 'schema-org-blocks' ), value: 'post:title' },
 	{ label: __( 'Post URL', 'schema-org-blocks' ), value: 'post:url' },
+	{ label: __( 'Post date', 'schema-org-blocks' ), value: 'post:date' },
+	{
+		label: __( 'Post modified date', 'schema-org-blocks' ),
+		value: 'post:modified',
+	},
+	{ label: __( 'Post excerpt', 'schema-org-blocks' ), value: 'post:excerpt' },
+	{ label: __( 'Post author', 'schema-org-blocks' ), value: 'post:author' },
+	{
+		label: __( 'Post featured image', 'schema-org-blocks' ),
+		value: 'post:image',
+	},
+	{ label: __( 'Site name', 'schema-org-blocks' ), value: 'site:name' },
+	{
+		label: __( 'Site tagline', 'schema-org-blocks' ),
+		value: 'site:description',
+	},
+	{ label: __( 'Site URL', 'schema-org-blocks' ), value: 'site:url' },
+	{ label: __( 'Site logo', 'schema-org-blocks' ), value: 'site:logo' },
+	{
+		label: __( 'Link to site Organization', 'schema-org-blocks' ),
+		value: 'reference:organization',
+	},
 ];
 
 /**
@@ -223,9 +245,15 @@ const SOURCES = [
  * @return {string} Source key.
  */
 function getSourceKey( mapping ) {
-	return mapping.source === 'post'
-		? `post:${ mapping.field || 'title' }`
-		: mapping.source;
+	if ( mapping.source === 'reference' ) {
+		return `reference:${ mapping.id }`;
+	}
+	if ( mapping.source === 'post' || mapping.source === 'site' ) {
+		return `${ mapping.source }:${
+			mapping.field || ( mapping.source === 'post' ? 'title' : 'name' )
+		}`;
+	}
+	return mapping.source;
 }
 
 /**
@@ -235,8 +263,12 @@ function getSourceKey( mapping ) {
  * @return {Object} Mapping fields to merge.
  */
 function parseSourceKey( key ) {
-	const [ source, field ] = key.split( ':' );
-	return field ? { source, field } : { source, field: undefined };
+	const [ source, detail ] = key.split( ':' );
+	return {
+		source,
+		field: source === 'reference' ? undefined : detail,
+		id: source === 'reference' ? detail : undefined,
+	};
 }
 
 /**

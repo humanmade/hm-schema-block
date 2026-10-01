@@ -7,11 +7,14 @@ A WordPress plugin that extends all blocks with schema.org type mapping and stru
 ## Features
 
 - 🎯 **Universal Block Extension**: Adds schema.org mapping to all WordPress blocks
-- 🔗 **Block Context Support**: Blocks can provide and consume schema types from parent/child relationships
-- ❓ **FAQ and How-to Presets**: FAQ and How-to variations of the Accordion block, plus Quick setup buttons on Accordion and Group blocks
-- 🎨 **Smart Defaults**: Automatic mapping for common blocks (image, button, heading, paragraph, accordion, details)
+- 🔗 **Nearest Typed Ancestor**: Property blocks attach to the closest typed block above them, through untyped groups, columns and template parts
+- 🧱 **Block Theme Support**: Post title, date, author, featured image, excerpt and terms, site title, tagline and logo, and query loops all feed the graph
+- 🪪 **Linked Graph**: Site-wide entities get an `@id`, and other entities can point to them, for example an Article's publisher
+- ❓ **Quick Setup Presets**: FAQ and How-to variations of the Accordion block, plus Quick setup buttons on Group, Accordion and Query blocks
+- 🧩 **Block Patterns**: Seven ready-made patterns in a "Schema.org" category
+- 🎨 **Smart Defaults**: Automatic mapping for common blocks (image, button, heading, paragraph, accordion, details, post and site blocks)
 - 🌳 **Hierarchical Types**: Support for nested schema types (e.g., Place > Accommodation > Room)
-- 🔄 **Flexible Property Mapping**: Map block attributes, block text, inner blocks text or post fields to schema properties
+- 🔄 **Flexible Property Mapping**: Map block attributes, block text, inner blocks text, post fields or site fields to schema properties
 - 🚀 **Yoast SEO Integration**: Extends Yoast's schema output when available
 - 📊 **JSON-LD Fallback**: Automatic JSON-LD output when Yoast is not installed
 
@@ -94,7 +97,9 @@ Each mapping has a source:
 - **Block attribute**: a block attribute. This includes attributes that core blocks store in their markup, such as the image `url` or the details `summary`. With no attribute picked, the block text is used.
 - **Block text**: the text of the block, including its inner blocks.
 - **Inner blocks text**: the text of the inner blocks only. A details block uses this for its answer, without the summary.
-- **Post title** and **Post URL**: fields of the current post.
+- **Post title**, **Post URL**, **Post date**, **Post modified date**, **Post excerpt**, **Post author** and **Post featured image**: fields of the current post. Inside a query loop, this is the post being shown. Dates are ISO 8601.
+- **Site name**, **Site tagline**, **Site URL** and **Site logo**: fields of the site.
+- **Link to site Organization**: a link to the site's Organization entity, output as `{"@id": "…"}`. See [Linked entities](#linked-entities).
 
 ### FAQ and How-to
 
@@ -102,17 +107,31 @@ Insert the **FAQ** or **How-to** variation of the Accordion block. Both come set
 
 You can also set up existing blocks. Select an Accordion or Group block and use the **FAQ** or **How-to** button under Quick setup. Details blocks inside an FAQ become Questions: the summary is the question and the inner blocks are the answer. Any typed block with inner blocks has an **Apply suggested mappings to inner blocks** link, which applies the smart defaults again.
 
+### Quick setup
+
+Quick setup gives a block a type and sets up the blocks inside it. Each block offers its own presets:
+
+- **Group**: FAQ, How-to, Article (url from the post) and Organization (id `organization`, url from the site)
+- **Accordion**: FAQ and How-to
+- **Query Loop**: Blog and Item list
+
 Google shows FAQ rich results only for some sites and no longer shows how-to rich results, but the markup is still valid and other search and answer engines use it.
 
 ### Parent and Child Blocks
 
-When a parent block has a schema type, a direct child block can:
+When a block has a schema type, any block inside it can:
 
 1. **Map as a property**: turn on "Map as property of parent" and pick the property. The block's text becomes the value.
 2. **Pick a value type**: a property block can also pick a type from those the property accepts. It is then output as a nested object, with its own mappings and child properties.
 3. **Be its own entity**: leave the toggle off and pick any schema type. The block is output as a separate object.
 
-Only direct children of a typed block can be its properties. The child values follow these rules:
+A property block belongs to its nearest typed ancestor. Untyped containers in between, such as groups, columns, rows and template parts, are passed through. The search stops at:
+
+- a typed block, which is a separate entity
+- a property block, whose content is its own value
+- an untyped post template, whose content repeats for each post
+
+The child values follow these rules:
 
 - Several children mapped to the same property produce an array, such as the questions of an FAQPage.
 - A plain value for a property that only accepts objects is wrapped. For example `acceptedAnswer` text becomes an `Answer` with `text`, and an `author` name becomes a `Person` with `name`.
@@ -131,8 +150,18 @@ When you add a block inside a typed parent, it is set up for you:
 - **core/accordion-heading**: `name`, from the heading title
 - **core/accordion-panel**: `acceptedAnswer` or `text`
 - **core/details**: a `Question` or `HowToStep`, with the summary as `name` and the inner blocks as the answer or text
+- **core/post-title**: `headline` or `name`
+- **core/post-date**: `datePublished`, or `dateModified` for the Modified Date variation
+- **core/post-author** and **core/post-author-name**: `author`
+- **core/post-featured-image**: `image`
+- **core/post-excerpt**: `description`
+- **core/post-terms**: `keywords`
+- **core/site-title**: `name`
+- **core/site-tagline**: `description`
+- **core/site-logo**: `logo` or `image`
+- **core/post-template**: a `BlogPosting` for `itemListElement` or `blogPost`
 
-The first property the parent type has is used. Headings and paragraphs inside a Question, Answer or HowToStep get no default, since their text already feeds the answer. Most blocks get a default only for the first unconfigured block of that type, and only while no sibling claims the property. Images, accordion items and details blocks repeat. If you turn off "Map as property of parent", the block keeps that choice.
+The first property the parent type has is used. Headings and paragraphs inside a Question, Answer or HowToStep get no default, since their text already feeds the answer. Most blocks get a default only for the first unconfigured block of that type, and only while no other block under the same typed ancestor claims the property. Images, accordion items and details blocks repeat. If you turn off "Map as property of parent", the block keeps that choice.
 
 ### Example: Article with Schema
 
@@ -158,12 +187,86 @@ Accordion (FAQPage)
     └── Accordion panel (→ acceptedAnswer)
 ```
 
+## Block Themes
+
+Templates and template parts work the same way as post content. The plugin reads them as the page renders, so a graph can come from templates alone.
+
+### Dynamic blocks
+
+Dynamic blocks save no text, so the plugin asks WordPress for their value. Post blocks use the post in their block context. Inside a query loop, that is the post being shown.
+
+| Block | Value | Default property |
+|-------|-------|------------------|
+| Post Title | Post title | `headline` or `name` |
+| Post Date | Publish date, ISO 8601 | `datePublished` |
+| Post Date (Modified Date variation) | Modified date, ISO 8601 | `dateModified` |
+| Post Author, Post Author Name | Author display name | `author` (as a `Person`) |
+| Post Featured Image | Image URL | `image` |
+| Post Excerpt | Excerpt text | `description` |
+| Post Terms | Term names, comma separated | `keywords` |
+| Site Title | Site name | `name` |
+| Site Tagline | Site tagline | `description` |
+| Site Logo | Logo URL | `logo` or `image` |
+
+### Query loops
+
+Give a Post Template block a type, and it outputs one entity per post in the query. Each one gets the post's permalink as `url`. The query comes from the Query Loop block, or from the main query when the loop inherits it.
+
+- A typed Post Template on its own gives one `BlogPosting` (or other type) per post.
+- On a `Blog` query, mark the Post Template as the `blogPost` property. The posts become `blogPost` entries of the Blog.
+- On an `ItemList` query, mark it as `itemListElement`. Each post is wrapped in a `ListItem` with its `position`.
+
+### Linked entities
+
+A typed block can have an `id`. It is output as `@id`, made from the home URL and `#id`, for example `https://example.com/#organization`. The Organization preset sets the id `organization`. This is the same `@id` that Yoast SEO gives the site organization, so both nodes describe one organization.
+
+Another entity links to it with a `reference` mapping, or **Link to site Organization** in the Source picker. The Article header pattern uses this for `publisher`. With the Organization in the header template part and the Article header in the single template, a post with no schema of its own outputs:
+
+```json
+{
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@id": "https://example.com/#organization",
+      "@type": "Organization",
+      "url": "https://example.com/",
+      "logo": "https://example.com/wp-content/uploads/logo.png",
+      "name": "Example",
+      "description": "Just another site"
+    },
+    {
+      "@type": "Article",
+      "url": "https://example.com/hello-world/",
+      "publisher": { "@id": "https://example.com/#organization" },
+      "keywords": "News",
+      "headline": "Hello world",
+      "author": { "@type": "Person", "name": "Jane Doe" },
+      "datePublished": "2026-09-30T10:00:00+00:00",
+      "image": "https://example.com/wp-content/uploads/hello.jpg"
+    }
+  ]
+}
+```
+
+### Patterns
+
+The plugin adds a **Schema.org** block pattern category with seven patterns:
+
+- **FAQ accordion**: questions and answers in an accordion, as `FAQPage`
+- **How-to accordion**: steps in an accordion, as `HowTo` named after the post
+- **FAQ details**: questions and answers in details blocks, as `FAQPage`
+- **Article header**: post terms, title, author, date and featured image, as an `Article` published by the site Organization. Offered for single templates.
+- **Site header with Organization**: site logo, title and tagline, as the `Organization` with id `organization`. Offered for header template parts.
+- **Blog post list**: a query loop as a `Blog`, with a `BlogPosting` per post
+- **Post item list**: a query loop as an `ItemList`, with a `ListItem` per post
+
 ## Schema Types
 
 The plugin includes comprehensive schema.org type definitions including:
 
 - **Creative Works**: Article, BlogPosting, NewsArticle, CreativeWork, WebPage, Comment
 - **FAQs and How-tos**: FAQPage, Question, Answer, HowTo, HowToStep
+- **Sites and Lists**: WebSite, Blog, ItemList, ListItem
 - **Organizations**: Organization, LocalBusiness
 - **People**: Person
 - **Places**: Place, Accommodation, Room
@@ -198,7 +301,7 @@ add_filter( 'schema_org_blocks_types', function( $types ) {
 
 ### Modifying Smart Defaults
 
-Smart defaults are a rule table (`RULES`) in `src/utils/smart-defaults.js`, keyed by block name. Each rule lists candidate parent `properties` in order of preference. It can also set `repeatable`, `exceptParentTypes`, and a `build` function that returns the `schemaOrg` value. Add a rule to support another block type.
+Smart defaults are a rule table (`RULES`) in `src/utils/smart-defaults.js`, keyed by block name. Each rule lists candidate parent `properties` in order of preference, or a function of the block's attributes that returns them. It can also set `repeatable`, `exceptParentTypes`, `nested` (the block is an entity of its own, so its inner blocks are not properties of the outer type), and a `build` function that returns the `schemaOrg` value. Add a rule to support another block type. Quick setup presets are in `PRESETS` in the same file. Each one lists the `blocks` that offer it.
 
 ### Changing the Output
 
@@ -214,6 +317,10 @@ add_filter( 'schema_org_blocks_graph', function( $graph ) {
     return $graph;
 } );
 ```
+
+### For AI agents
+
+The plugin ships an agent skill in [`skills/schema-org-blocks/SKILL.md`](skills/schema-org-blocks/SKILL.md). It explains the `schemaOrg` attribute, how the graph is built, which pattern to copy for each goal, and how to check the output. Copy the folder into a project's `.claude/skills/`, or point any agent that reads `SKILL.md` files at it. It helps an agent add structured data to patterns and block theme templates without breaking the block markup.
 
 ## Output
 
@@ -249,11 +356,11 @@ Schema data is output as JSON-LD in the site header. The characters `<`, `>` and
 
 ## Known Limitations
 
-Schema is built from the saved block markup, not from the final rendered HTML. This keeps output fast and the same in block and classic themes, but it has some effects:
+Schema is built from the saved block markup, plus WordPress data for the dynamic blocks above, not from the final rendered HTML. This keeps output fast and the same in block and classic themes, but it has some effects:
 
 - Pattern overrides and block bindings are not applied. A synced pattern with overridden text gives the pattern's own text, and a block bound to post meta gives its saved fallback.
 - Plugins that hide content with `pre_render_block`, `render_block_data` or `the_content`, such as membership or paywall plugins, do not hide it from the schema. Do not map members-only content to schema properties. You can remove it with the `schema_org_blocks_graph` filter.
-- Only direct inner blocks of a typed block can be its properties.
+- Dynamic blocks other than those listed in [Dynamic blocks](#dynamic-blocks) save no text, so they give no value.
 
 Blocks hidden with the block visibility setting, and password-protected posts and synced patterns, are left out.
 

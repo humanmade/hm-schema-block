@@ -58,7 +58,8 @@ function get_schema_types() : array {
 				'dateModified' => [ 'type' => 'DateTime', 'label' => 'Date Modified' ],
 				'headline' => [ 'type' => 'Text', 'label' => 'Headline' ],
 				'text' => [ 'type' => 'Text', 'label' => 'Text' ],
-				'publisher' => [ 'type' => 'Organization', 'label' => 'Publisher' ],
+				'publisher' => [ 'type' => [ 'Organization', 'Person' ], 'label' => 'Publisher' ],
+				'keywords' => [ 'type' => 'Text', 'label' => 'Keywords' ],
 			],
 		],
 		'WebPage' => [
@@ -108,6 +109,34 @@ function get_schema_types() : array {
 			'label' => 'How-to Step',
 			'parent' => 'CreativeWork',
 			'properties' => [],
+		],
+		'WebSite' => [
+			'label' => 'Web Site',
+			'parent' => 'CreativeWork',
+			'properties' => [],
+		],
+		'Blog' => [
+			'label' => 'Blog',
+			'parent' => 'CreativeWork',
+			'properties' => [
+				'blogPost' => [ 'type' => 'BlogPosting', 'label' => 'Blog Posts' ],
+			],
+		],
+		'ItemList' => [
+			'label' => 'Item List',
+			'parent' => 'Thing',
+			'properties' => [
+				'itemListElement' => [ 'type' => [ 'ListItem', 'Thing', 'Text' ], 'label' => 'Items' ],
+				'numberOfItems' => [ 'type' => 'Integer', 'label' => 'Number of Items' ],
+			],
+		],
+		'ListItem' => [
+			'label' => 'List Item',
+			'parent' => 'Thing',
+			'properties' => [
+				'position' => [ 'type' => 'Integer', 'label' => 'Position' ],
+				'item' => [ 'type' => 'Thing', 'label' => 'Item' ],
+			],
 		],
 		'Organization' => [
 			'label' => 'Organization',

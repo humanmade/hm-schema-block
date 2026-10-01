@@ -65,8 +65,13 @@ hm-schema-block/
 │   ├── namespace.php            # Plugin bootstrap
 │   ├── schema-types.php         # Schema.org type definitions
 │   ├── block-values.php         # Read attributes and text from block markup
-│   ├── block-extensions.php     # Block attribute/context registration, schema object builder
+│   ├── block-extensions.php     # schemaOrg attribute, schema object builder (ancestor walk, query loops)
+│   ├── dynamic-values.php       # Values of dynamic blocks, post fields and site fields
+│   ├── patterns.php             # Registers the Schema.org pattern category and patterns
 │   └── schema-output.php        # Collection during render, JSON-LD and Yoast output
+├── patterns/                     # Block pattern markup, one .html file per pattern
+├── skills/
+│   └── schema-org-blocks/SKILL.md  # Agent skill for annotating patterns and templates
 ├── src/                          # JavaScript source
 │   ├── index.js                 # Main entry point
 │   ├── variations.js            # FAQ and How-to accordion variations
@@ -130,6 +135,22 @@ Edit `src/utils/smart-defaults.js` and add a rule to the `RULES` table, keyed by
 
 The same rules drive defaults on insert, the Quick setup presets and the FAQ and How-to variations.
 
+### Adding or Changing Patterns
+
+Patterns live in `patterns/*.html`, one file per pattern. `inc/patterns.php` registers them in the "Schema.org" category. Its `get_patterns()` list holds each pattern's title, description, keywords, and where it is offered (`templateTypes` or `blockTypes`). The file name without `.html` is the pattern slug.
+
+Keep the markup exactly as the editor serializes it. If it differs, the blocks load as invalid. Do not write or edit pattern markup by hand. Regenerate it from the real editor instead:
+
+```bash
+npm run patterns:generate
+```
+
+This runs `tests/e2e/generate-patterns.spec.js`. It builds each pattern from plain blocks, applies Quick setup like a user would, and saves the editor's content to `patterns/`. To add a pattern, add an entry to `PATTERNS` in that file (the blocks, the Quick setup button to click, and any extra mappings) and an entry to `get_patterns()`. Generate on the oldest supported WordPress version, so newer versions load the patterns through their own deprecations.
+
+`tests/e2e/patterns.spec.js` tests every pattern. It checks that the pattern loads in the editor with no invalid blocks, and that a published post outputs the expected graph. Update its expectations when you change a pattern.
+
+If a pattern changes how to annotate blocks, update `skills/schema-org-blocks/SKILL.md` too.
+
 ### Adding New UI Components
 
 1. Create component in `src/components/`
@@ -145,7 +166,8 @@ Write tests for:
 - Schema type selection
 - Attribute mapping
 - Smart defaults application
-- Parent/child context relationships
+- Property blocks and their nearest typed ancestor
+- Pattern and template output
 
 Example test structure:
 ```javascript

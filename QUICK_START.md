@@ -36,7 +36,7 @@ Google shows FAQ rich results only for some sites and no longer shows how-to ric
 4. Select **"Article"** as the Schema Type
 5. Add a **Heading** and a **Paragraph** inside the Group. They map to `headline` and `description` on their own.
 
-You can also add mappings on the Group itself. Each mapping has a source: Block attribute, Block text, Inner blocks text, Post title or Post URL. For example, map `headline` to Post title.
+You can also add mappings on the Group itself. Each mapping has a source: a block attribute, the block text, the inner blocks text, a post field (title, URL, dates, excerpt, author, featured image), a site field (name, tagline, URL, logo), or a link to the site Organization. For example, map `headline` to Post title.
 
 ### 2. Add an Image with Auto-Mapping
 
@@ -71,6 +71,22 @@ You can also add mappings on the Group itself. Each mapping has a source: Block 
 }
 </script>
 ```
+
+## Block Themes
+
+The plugin adds a **Schema.org** pattern category. Three of its patterns build a linked site graph:
+
+1. Open **Appearance → Editor** and edit the **Header** template part. Insert **Site header with Organization**, or select an existing Group with the site logo and title and click **Organization** under Quick setup.
+2. Edit the **Single Posts** template. Insert **Article header** in place of the post title, date and featured image. Its `publisher` links to the header's Organization.
+3. Edit the **Blog Home**, **Index** or **Archive** template. Insert **Blog post list** or **Post item list**, or select the Query Loop and click **Blog** or **Item list** under Quick setup.
+
+To check the output, open a post on the front end and view the page source. Look for the `application/ld+json` script, or Yoast's `yoast-schema-graph` script when Yoast SEO is active. You should see:
+
+- an `Organization` with `"@id": "https://example.com/#organization"`
+- an `Article` with `headline`, `datePublished`, `author` and `"publisher": { "@id": "https://example.com/#organization" }`
+- on the home page, a `Blog` with a `blogPost` entry per post, or an `ItemList` with a `ListItem` per post
+
+Paste the URL into the validators under [Testing Your Schema](#testing-your-schema) to check it.
 
 ## Common Patterns
 
@@ -122,6 +138,9 @@ These blocks automatically configure when nested in a schema context:
 | **Accordion heading** | `name` | Text |
 | **Accordion panel** | `acceptedAnswer` or `text` | Answer or Text |
 | **Details** | `mainEntity` or `step` | Question or HowToStep |
+| **Post Title, Date, Author, Featured Image, Excerpt, Terms** | `headline`, `datePublished` or `dateModified`, `author`, `image`, `description`, `keywords` | Text, Person or URL |
+| **Site Title, Tagline, Logo** | `name`, `description`, `logo` | Text or URL |
+| **Post Template** | `blogPost` or `itemListElement` | BlogPosting |
 
 Only the first unconfigured block of each type gets a default, except images, accordion items and details blocks, which repeat. Headings and paragraphs inside a Question, Answer or HowToStep are left alone. To re-apply the defaults, select the typed block and click **Apply suggested mappings to inner blocks**.
 
@@ -129,7 +148,7 @@ Only the first unconfigured block of each type gets a default, except images, ac
 
 Some schema types have subtypes, and inherit their parent type's properties. **Example: Place → Accommodation → Room**
 
-When a block is mapped as a property of its parent, its **Value Type** list only shows the types that property accepts, plus their subtypes. Only direct children of a typed block can be its properties.
+When a block is mapped as a property of its parent, its **Value Type** list only shows the types that property accepts, plus their subtypes. A property block belongs to its nearest typed ancestor, even through untyped groups and columns in between.
 
 ## Property Types
 

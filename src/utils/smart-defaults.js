@@ -7,10 +7,11 @@ import { __ } from '@wordpress/i18n';
 /**
  * Default rules by block name.
  *
- * `properties` lists candidate parent properties in order of preference; the first one the
- * parent type has is used. `repeatable` rules apply to every matching sibling, producing an
+ * `properties` lists candidate parent properties in order of preference, or is a function of
+ * the block's attributes that returns them; the first one the parent type has is used. `repeatable` rules apply to every matching sibling, producing an
  * array; other rules apply to the first unconfigured sibling of that block type only.
- * `exceptParentTypes` lists parent types the rule does not apply in.
+ * `exceptParentTypes` lists parent types the rule does not apply in. `nested` rules make the
+ * block a typed entity of its own, so its inner blocks are not properties of the outer type.
  */
 const RULES = {
 	'core/heading': {
@@ -48,6 +49,7 @@ const RULES = {
 		build: ( propertyName ) => attributeProperty( propertyName, 'url' ),
 	},
 	'core/accordion-item': {
+		nested: true,
 		properties: [ 'mainEntity', 'step' ],
 		repeatable: true,
 		build: ( propertyName ) => ( {
@@ -64,7 +66,52 @@ const RULES = {
 	'core/accordion-panel': {
 		properties: [ 'acceptedAnswer', 'text' ],
 	},
+	'core/post-title': {
+		properties: [ 'headline', 'name' ],
+	},
+	'core/post-date': {
+		properties: ( attributes ) =>
+			attributes?.metadata?.bindings?.datetime?.args?.field ===
+				'modified' || attributes?.displayType === 'modified'
+				? [ 'dateModified' ]
+				: [ 'datePublished' ],
+	},
+	'core/post-author-name': {
+		properties: [ 'author' ],
+	},
+	'core/post-author': {
+		properties: [ 'author' ],
+	},
+	'core/post-featured-image': {
+		properties: [ 'image' ],
+	},
+	'core/post-excerpt': {
+		properties: [ 'description' ],
+	},
+	'core/post-terms': {
+		properties: [ 'keywords' ],
+	},
+	'core/site-title': {
+		properties: [ 'name' ],
+	},
+	'core/site-tagline': {
+		properties: [ 'description' ],
+	},
+	'core/site-logo': {
+		properties: [ 'logo', 'image' ],
+	},
+	'core/post-template': {
+		nested: true,
+		properties: [ 'itemListElement', 'blogPost' ],
+		build: ( propertyName ) => ( {
+			type: 'BlogPosting',
+			isProperty: true,
+			propertyName,
+			mappings: {},
+		} ),
+	},
 	'core/details': {
+		nested: true,
 		properties: [ 'mainEntity', 'step' ],
 		repeatable: true,
 		build: ( propertyName ) => {
@@ -86,11 +133,12 @@ const RULES = {
 
 /**
  * Presets offered on container blocks: a schema type for the block, whose inner blocks then
- * get smart defaults.
+ * get smart defaults. `blocks` lists the block names that offer the preset.
  */
 export const PRESETS = {
 	faq: {
 		label: __( 'FAQ', 'schema-org-blocks' ),
+		blocks: [ 'core/accordion', 'core/group' ],
 		schemaOrg: {
 			type: 'FAQPage',
 			mappings: {},
@@ -100,6 +148,7 @@ export const PRESETS = {
 	},
 	howTo: {
 		label: __( 'How-to', 'schema-org-blocks' ),
+		blocks: [ 'core/accordion', 'core/group' ],
 		schemaOrg: {
 			type: 'HowTo',
 			mappings: { name: { source: 'post', field: 'title' } },
@@ -107,12 +156,125 @@ export const PRESETS = {
 			propertyName: null,
 		},
 	},
+	article: {
+		label: __( 'Article', 'schema-org-blocks' ),
+		blocks: [ 'core/group' ],
+		schemaOrg: {
+			type: 'Article',
+			mappings: { url: { source: 'post', field: 'url' } },
+			isProperty: false,
+			propertyName: null,
+		},
+	},
+	organization: {
+		label: __( 'Organization', 'schema-org-blocks' ),
+		blocks: [ 'core/group' ],
+		schemaOrg: {
+			type: 'Organization',
+			id: 'organization',
+			mappings: { url: { source: 'site', field: 'url' } },
+			isProperty: false,
+			propertyName: null,
+		},
+	},
+	blog: {
+		label: __( 'Blog', 'schema-org-blocks' ),
+		blocks: [ 'core/query' ],
+		schemaOrg: {
+			type: 'Blog',
+			mappings: {},
+			isProperty: false,
+			propertyName: null,
+		},
+	},
+	itemList: {
+		label: __( 'Item list', 'schema-org-blocks' ),
+		blocks: [ 'core/query' ],
+		schemaOrg: {
+			type: 'ItemList',
+			mappings: {},
+			isProperty: false,
+			propertyName: null,
+		},
+	},
 };
 
 /**
- * Block names that get the preset buttons.
+ * Get the presets a block offers.
+ *
+ * @param {string} blockName Block name.
+ * @return {Array} [ key, preset ] pairs.
  */
-export const PRESET_BLOCKS = [ 'core/accordion', 'core/group' ];
+export function getPresetsFor( blockName ) {
+	return Object.entries( PRESETS ).filter( ( [ , preset ] ) =>
+		preset.blocks.includes( blockName )
+	);
+}
+
+/**
+ * Whether a block's inner blocks are skipped when looking for property blocks of a type.
+ *
+ * The walk stops at a block with a type, a property block, a post template (its content
+ * repeats per post), and a block whose smart default under that type makes it a nested entity:
+ * its inner blocks belong to it, not to the outer type.
+ *
+ * @param {Object}      block      Block: `{ name, attributes }`.
+ * @param {string|null} parentType Type the walk is looking for properties of.
+ * @return {boolean} Whether the walk stops at this block.
+ */
+function stopsWalk( block, parentType ) {
+	const schemaOrg = block.attributes?.schemaOrg || {};
+	if (
+		schemaOrg.type ||
+		schemaOrg.isProperty ||
+		block.name === 'core/post-template'
+	) {
+		return true;
+	}
+	return Boolean(
+		RULES[ block.name ]?.nested &&
+		getSmartDefaults( block.name, parentType, block.attributes )
+	);
+}
+
+/**
+ * Find the schema type a block's properties belong to: the closest typed ancestor, found
+ * through untyped container blocks.
+ *
+ * @param {Object[]} ancestors Ancestor blocks, closest first: `{ name, attributes }`.
+ * @return {string|null} Schema type, or null.
+ */
+export function findParentType( ancestors ) {
+	const [ ancestor, ...rest ] = ancestors;
+
+	if ( ! ancestor ) {
+		return null;
+	}
+
+	if ( ancestor.attributes?.schemaOrg?.type ) {
+		return ancestor.attributes.schemaOrg.type;
+	}
+
+	const typeAbove = findParentType( rest );
+	return stopsWalk( ancestor, typeAbove ) ? null : typeAbove;
+}
+
+/**
+ * List the blocks that can be properties of a typed block, in document order: its inner
+ * blocks and, through untyped containers, theirs.
+ *
+ * @param {Object[]} blocks     Inner blocks of the typed block, from getBlocks().
+ * @param {string}   parentType The typed block's schema type.
+ * @return {Object[]} Blocks.
+ */
+export function getPropertyCandidates( blocks, parentType ) {
+	return blocks.flatMap( ( block ) => [
+		block,
+		...( stopsWalk( block, parentType )
+			? []
+			: getPropertyCandidates( block.innerBlocks || [], parentType ) ),
+	] );
+}
 
 /**
  * Whether a property config accepts a schema type.
@@ -148,9 +310,10 @@ function attributeProperty( propertyName, attributeName ) {
  *
  * @param {string}      blockName  Block name.
  * @param {string|null} parentType Parent block's schema type.
+ * @param {Object}      attributes The block's attributes, for rules that depend on them.
  * @return {Object|null} schemaOrg attribute value, or null when there is no default.
  */
-export function getSmartDefaults( blockName, parentType ) {
+export function getSmartDefaults( blockName, parentType, attributes = {} ) {
 	const rule = RULES[ blockName ];
 	const parentProperties =
 		window.schemaOrgBlocksData?.schemaProperties?.[ parentType ];
@@ -163,7 +326,11 @@ export function getSmartDefaults( blockName, parentType ) {
 		return null;
 	}
 
-	const propertyName = rule.properties.find(
+	const candidates =
+		typeof rule.properties === 'function'
+			? rule.properties( attributes )
+			: rule.properties;
+	const propertyName = candidates.find(
 		( property ) => parentProperties[ property ]
 	);
 
@@ -196,7 +363,7 @@ export function isConfigured( schemaOrg = {} ) {
  *
  * @param {Object}   block      The block: `{ clientId, name, attributes }`.
  * @param {string}   parentType Parent block's schema type.
- * @param {Object[]} siblings   The parent's inner blocks, including this block.
+ * @param {Object[]} siblings   The typed ancestor's property candidates, including this block.
  * @return {boolean} Whether to apply defaults.
  */
 export function shouldApplyDefaults( block, parentType, siblings ) {
@@ -210,7 +377,11 @@ export function shouldApplyDefaults( block, parentType, siblings ) {
 		return false;
 	}
 
-	const defaults = getSmartDefaults( block.name, parentType );
+	const defaults = getSmartDefaults(
+		block.name,
+		parentType,
+		block.attributes
+	);
 
 	if ( ! defaults ) {
 		return false;
@@ -258,8 +429,8 @@ function isRepeatable( blockName ) {
 /**
  * Work out smart defaults for a block tree, as if every block were newly inserted.
  *
- * Blocks with a default get it, replacing their current config. A block that becomes typed
- * passes its type on to its own inner blocks. Blocks without a default are left alone, unless
+ * Inner blocks are walked through untyped containers. Blocks with a default get it, replacing
+ * their current config. A block that becomes typed passes its type on to its own inner blocks. Blocks without a default are left alone, unless
  * they are mapped to a property the parent type does not have, which is cleared.
  *
  * @param {Object[]} blocks     Inner blocks of the typed block, from getBlocks().
@@ -269,11 +440,14 @@ function isRepeatable( blockName ) {
 export function getTreeDefaults( blocks, parentType ) {
 	const updates = {};
 	const claimed = new Set(
-		blocks
+		getPropertyCandidates( blocks, parentType )
 			.filter(
 				( block ) =>
-					! getSmartDefaults( block.name, parentType ) &&
-					block.attributes?.schemaOrg?.isProperty
+					! getSmartDefaults(
+						block.name,
+						parentType,
+						block.attributes
+					) && block.attributes?.schemaOrg?.isProperty
 			)
 			.map( ( block ) => block.attributes.schemaOrg.propertyName )
 	);
@@ -281,37 +455,47 @@ export function getTreeDefaults( blocks, parentType ) {
 	const parentProperties =
 		window.schemaOrgBlocksData?.schemaProperties?.[ parentType ] || {};
 
-	blocks.forEach( ( block ) => {
-		const defaults = getSmartDefaults( block.name, parentType );
-		const current = block.attributes?.schemaOrg;
+	const visit = ( list ) =>
+		list.forEach( ( block ) => {
+			const defaults = getSmartDefaults(
+				block.name,
+				parentType,
+				block.attributes
+			);
+			const current = block.attributes?.schemaOrg;
 
-		if ( ! defaults ) {
-			// Unlink blocks mapped to a property the new parent type does not have.
-			if (
-				current?.isProperty &&
-				! parentProperties[ current.propertyName ]
-			) {
-				updates[ block.clientId ] = { ...EMPTY_CONFIG };
-			}
-			return;
-		}
-
-		if ( ! isRepeatable( block.name ) ) {
-			if ( claimed.has( defaults.propertyName ) ) {
+			if ( ! defaults ) {
+				// Unlink blocks mapped to a property the new parent type does not have.
+				const isStale =
+					current?.isProperty &&
+					! parentProperties[ current.propertyName ];
+				if ( isStale ) {
+					updates[ block.clientId ] = { ...EMPTY_CONFIG };
+				}
+				if ( isStale || ! stopsWalk( block, parentType ) ) {
+					visit( block.innerBlocks || [] );
+				}
 				return;
 			}
-			claimed.add( defaults.propertyName );
-		}
 
-		updates[ block.clientId ] = defaults;
+			if ( ! isRepeatable( block.name ) ) {
+				if ( claimed.has( defaults.propertyName ) ) {
+					return;
+				}
+				claimed.add( defaults.propertyName );
+			}
 
-		if ( defaults.type ) {
-			Object.assign(
-				updates,
-				getTreeDefaults( block.innerBlocks || [], defaults.type )
-			);
-		}
-	} );
+			updates[ block.clientId ] = defaults;
+
+			if ( defaults.type ) {
+				Object.assign(
+					updates,
+					getTreeDefaults( block.innerBlocks || [], defaults.type )
+				);
+			}
+		} );
+
+	visit( blocks );
 
 	return updates;
 }
@@ -337,6 +521,29 @@ export function propertyAcceptsType( parentType, propertyName, type ) {
 		current = schemaTypes[ current ]?.parent
 	) {
 		if ( accepted.includes( current ) ) {
+			return true;
+		}
+	}
+
+	return false;
+}
+
+/**
+ * Whether a schema type is the same as, or a subtype of, another.
+ *
+ * @param {string} type     Schema type.
+ * @param {string} ancestor Possible ancestor type.
+ * @return {boolean} Whether `type` is `ancestor` or descends from it.
+ */
+export function isTypeOrSubtype( type, ancestor ) {
+	const { schemaTypes = {} } = window.schemaOrgBlocksData || {};
+
+	for (
+		let current = type;
+		current;
+		current = schemaTypes[ current ]?.parent
+	) {
+		if ( current === ancestor ) {
 			return true;
 		}
 	}

@@ -7,11 +7,7 @@ import { store as blockEditorStore } from '@wordpress/block-editor';
 import { useDispatch, useSelect } from '@wordpress/data';
 import { __ } from '@wordpress/i18n';
 
-import {
-	PRESETS,
-	PRESET_BLOCKS,
-	getTreeDefaults,
-} from '../utils/smart-defaults';
+import { getPresetsFor, getTreeDefaults } from '../utils/smart-defaults';
 
 const SchemaPresets = ( { clientId, blockName, schemaOrg } ) => {
 	const { getBlocks, hasInnerBlocks } = useSelect(
@@ -43,8 +39,8 @@ const SchemaPresets = ( { clientId, blockName, schemaOrg } ) => {
 		);
 	};
 
-	const showPresets =
-		PRESET_BLOCKS.includes( blockName ) && ! schemaOrg.isProperty;
+	const presets = getPresetsFor( blockName );
+	const showPresets = presets.length > 0 && ! schemaOrg.isProperty;
 	const showReapply = Boolean( schemaOrg.type ) && hasInnerBlocks;
 
 	if ( ! showPresets && ! showReapply ) {
@@ -64,21 +60,19 @@ const SchemaPresets = ( { clientId, blockName, schemaOrg } ) => {
 					) }
 				>
 					<div className="schema-org-blocks-presets__buttons">
-						{ Object.entries( PRESETS ).map(
-							( [ key, preset ] ) => (
-								<Button
-									key={ key }
-									variant="secondary"
-									size="compact"
-									isPressed={
-										schemaOrg.type === preset.schemaOrg.type
-									}
-									onClick={ () => apply( preset.schemaOrg ) }
-								>
-									{ preset.label }
-								</Button>
-							)
-						) }
+						{ presets.map( ( [ key, preset ] ) => (
+							<Button
+								key={ key }
+								variant="secondary"
+								size="compact"
+								isPressed={
+									schemaOrg.type === preset.schemaOrg.type
+								}
+								onClick={ () => apply( preset.schemaOrg ) }
+							>
+								{ preset.label }
+							</Button>
+						) ) }
 					</div>
 				</BaseControl>
 			) }
