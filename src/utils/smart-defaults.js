@@ -1,202 +1,162 @@
 /**
- * Smart defaults utility for common block types.
- *
- * @package
+ * Smart defaults: the schema configuration a block gets when it sits inside a typed parent.
  */
 
 /**
- * Get smart defaults for a block type based on parent schema context.
+ * Default rules by block name.
  *
- * @param {string}      blockName           Block name.
- * @param {Object|null} parentSchemaContext Parent schema context.
- * @return {Object|null} Smart defaults or null.
+ * `properties` lists candidate parent properties in order of preference; the first one the
+ * parent type has is used. `repeatable` rules apply to every matching sibling, producing an
+ * array; other rules apply to the first unconfigured sibling of that block type only.
  */
-export function getSmartDefaults( blockName, parentSchemaContext ) {
-	const { schemaProperties } = window.schemaOrgBlocksData || {};
-
-	if ( ! parentSchemaContext || ! parentSchemaContext.type ) {
-		return null;
-	}
-
-	const parentType = parentSchemaContext.type;
-	const parentProperties = schemaProperties?.[ parentType ] || {};
-
-	// Smart defaults for core/image.
-	if ( blockName === 'core/image' ) {
-		// Check if parent has an image property that accepts ImageObject.
-		const imageProps = Object.entries( parentProperties ).filter(
-			( [ , propConfig ] ) => {
-				const types = Array.isArray( propConfig.type )
-					? propConfig.type
-					: [ propConfig.type ];
-				return (
-					types.includes( 'ImageObject' ) || types.includes( 'URL' )
-				);
-			}
-		);
-
-		if ( imageProps.length > 0 ) {
-			const [ propName, propConfig ] = imageProps[ 0 ];
-			const types = Array.isArray( propConfig.type )
-				? propConfig.type
-				: [ propConfig.type ];
-
-			// If ImageObject is accepted, use it. Otherwise map as URL.
-			if ( types.includes( 'ImageObject' ) ) {
-				return {
-					type: 'ImageObject',
-					isProperty: true,
-					propertyName: propName,
-					mappings: {
-						contentUrl: {
-							source: 'attribute',
-							attributeName: 'url',
+const RULES = {
+	'core/heading': {
+		properties: [ 'headline', 'name' ],
+	},
+	'core/paragraph': {
+		properties: [ 'description', 'text' ],
+	},
+	'core/image': {
+		properties: [ 'image', 'logo' ],
+		repeatable: true,
+		build: ( propertyName, propertyConfig ) =>
+			acceptsType( propertyConfig, 'ImageObject' )
+				? {
+						type: 'ImageObject',
+						isProperty: true,
+						propertyName,
+						mappings: {
+							contentUrl: {
+								source: 'attribute',
+								attributeName: 'url',
+							},
+							caption: {
+								source: 'attribute',
+								attributeName: 'caption',
+							},
 						},
-						caption: {
-							source: 'attribute',
-							attributeName: 'caption',
-						},
-						width: {
-							source: 'attribute',
-							attributeName: 'width',
-						},
-						height: {
-							source: 'attribute',
-							attributeName: 'height',
-						},
-					},
-				};
-			}
-			// Map URL directly.
-			return {
-				type: null,
-				isProperty: true,
-				propertyName: propName,
-				mappings: {
-					[ propName ]: {
-						source: 'attribute',
-						attributeName: 'url',
-					},
-				},
-			};
-		}
-	}
+				  }
+				: attributeProperty( propertyName, 'url' ),
+	},
+	'core/button': {
+		properties: [ 'url' ],
+		build: ( propertyName ) => attributeProperty( propertyName, 'url' ),
+	},
+};
 
-	// Smart defaults for core/button.
-	if ( blockName === 'core/button' ) {
-		// Check for URL properties.
-		const urlProps = Object.entries( parentProperties ).filter(
-			( [ , propConfig ] ) => {
-				const types = Array.isArray( propConfig.type )
-					? propConfig.type
-					: [ propConfig.type ];
-				return types.includes( 'URL' );
-			}
-		);
-
-		if ( urlProps.length > 0 ) {
-			const [ propName ] = urlProps[ 0 ];
-			return {
-				type: null,
-				isProperty: true,
-				propertyName: propName,
-				mappings: {
-					[ propName ]: {
-						source: 'attribute',
-						attributeName: 'url',
-					},
-				},
-			};
-		}
-	}
-
-	// Smart defaults for core/heading.
-	if ( blockName === 'core/heading' ) {
-		// Check for name or headline properties.
-		if ( parentProperties.headline ) {
-			return {
-				type: null,
-				isProperty: true,
-				propertyName: 'headline',
-				mappings: {},
-			};
-		} else if ( parentProperties.name ) {
-			return {
-				type: null,
-				isProperty: true,
-				propertyName: 'name',
-				mappings: {},
-			};
-		}
-	}
-
-	// Smart defaults for core/paragraph.
-	if ( blockName === 'core/paragraph' ) {
-		// Check for description or text properties.
-		if ( parentProperties.description ) {
-			return {
-				type: null,
-				isProperty: true,
-				propertyName: 'description',
-				mappings: {},
-			};
-		} else if ( parentProperties.text ) {
-			return {
-				type: null,
-				isProperty: true,
-				propertyName: 'text',
-				mappings: {},
-			};
-		} else if ( parentProperties.articleBody ) {
-			return {
-				type: null,
-				isProperty: true,
-				propertyName: 'articleBody',
-				mappings: {},
-			};
-		}
-	}
-
-	return null;
+/**
+ * Whether a property config accepts a schema type.
+ *
+ * @param {Object} propertyConfig Property config from schemaProperties.
+ * @param {string} type           Schema type or data type.
+ * @return {boolean} Whether the type is accepted.
+ */
+function acceptsType( propertyConfig, type ) {
+	return [].concat( propertyConfig?.type ).includes( type );
 }
 
 /**
- * Check if smart defaults should be auto-applied.
+ * Config for an untyped property block whose value comes from one of its attributes.
  *
- * @param {string}      blockName           Block name.
- * @param {Object}      currentSchemaOrg    Current schemaOrg attribute.
- * @param {Object|null} parentSchemaContext Parent schema context.
- * @return {boolean} Whether to auto-apply defaults.
+ * @param {string} propertyName  Parent property.
+ * @param {string} attributeName Block attribute.
+ * @return {Object} schemaOrg attribute value.
  */
-export function shouldAutoApplyDefaults(
-	blockName,
-	currentSchemaOrg,
-	parentSchemaContext
-) {
-	// Only apply if:
-	// 1. Block has no schema configuration yet.
-	// 2. There's a parent schema context.
-	// 3. Block is a supported type.
-	const supportedBlocks = [
-		'core/image',
-		'core/button',
-		'core/heading',
-		'core/paragraph',
-	];
+function attributeProperty( propertyName, attributeName ) {
+	return {
+		type: null,
+		isProperty: true,
+		propertyName,
+		mappings: {
+			[ propertyName ]: { source: 'attribute', attributeName },
+		},
+	};
+}
 
-	if ( ! supportedBlocks.includes( blockName ) ) {
+/**
+ * Get the smart default config for a block inside a parent of the given type.
+ *
+ * @param {string}      blockName  Block name.
+ * @param {string|null} parentType Parent block's schema type.
+ * @return {Object|null} schemaOrg attribute value, or null when there is no default.
+ */
+export function getSmartDefaults( blockName, parentType ) {
+	const rule = RULES[ blockName ];
+	const parentProperties =
+		window.schemaOrgBlocksData?.schemaProperties?.[ parentType ];
+
+	if ( ! rule || ! parentProperties ) {
+		return null;
+	}
+
+	const propertyName = rule.properties.find(
+		( property ) => parentProperties[ property ]
+	);
+
+	if ( ! propertyName ) {
+		return null;
+	}
+
+	return rule.build
+		? rule.build( propertyName, parentProperties[ propertyName ] )
+		: { type: null, isProperty: true, propertyName, mappings: {} };
+}
+
+/**
+ * Whether a block's schemaOrg attribute has been set up, or defaults were turned off for it.
+ *
+ * @param {Object} schemaOrg schemaOrg attribute value.
+ * @return {boolean} Whether the block is configured.
+ */
+export function isConfigured( schemaOrg = {} ) {
+	return Boolean(
+		schemaOrg.type ||
+			schemaOrg.isProperty ||
+			schemaOrg.skipDefaults ||
+			Object.keys( schemaOrg.mappings || {} ).length
+	);
+}
+
+/**
+ * Whether smart defaults should be applied to a block now.
+ *
+ * @param {Object}   block      The block: `{ clientId, name, attributes }`.
+ * @param {string}   parentType Parent block's schema type.
+ * @param {Object[]} siblings   The parent's inner blocks, including this block.
+ * @return {boolean} Whether to apply defaults.
+ */
+export function shouldApplyDefaults( block, parentType, siblings ) {
+	const rule = RULES[ block.name ];
+
+	if (
+		! rule ||
+		! parentType ||
+		isConfigured( block.attributes.schemaOrg )
+	) {
 		return false;
 	}
 
-	if ( ! parentSchemaContext || ! parentSchemaContext.type ) {
+	const defaults = getSmartDefaults( block.name, parentType );
+
+	if ( ! defaults ) {
 		return false;
 	}
 
-	// Check if already configured.
-	const isConfigured =
-		currentSchemaOrg.type ||
-		currentSchemaOrg.isProperty ||
-		Object.keys( currentSchemaOrg.mappings || {} ).length > 0;
+	if ( rule.repeatable ) {
+		return true;
+	}
 
-	return ! isConfigured;
+	const claimed = siblings.some(
+		( sibling ) =>
+			sibling.attributes?.schemaOrg?.isProperty &&
+			sibling.attributes.schemaOrg.propertyName === defaults.propertyName
+	);
+
+	const firstUnconfigured = siblings.find(
+		( sibling ) =>
+			sibling.name === block.name &&
+			! isConfigured( sibling.attributes?.schemaOrg )
+	);
+
+	return ! claimed && firstUnconfigured?.clientId === block.clientId;
 }

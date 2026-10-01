@@ -6,17 +6,18 @@
 
 import { addFilter } from '@wordpress/hooks';
 import { createHigherOrderComponent } from '@wordpress/compose';
-import { InspectorControls } from '@wordpress/block-editor';
-import { useSelect } from '@wordpress/data';
+import {
+	InspectorControls,
+	store as blockEditorStore,
+} from '@wordpress/block-editor';
+import { useDispatch, useSelect } from '@wordpress/data';
 import { PanelBody } from '@wordpress/components';
-import { Fragment } from '@wordpress/element';
+import { Fragment, useEffect } from '@wordpress/element';
+import { __ } from '@wordpress/i18n';
 
 import SchemaTypeSelector from './components/SchemaTypeSelector';
 import AttributeMappingControls from './components/AttributeMappingControls';
-import {
-	getSmartDefaults,
-	shouldAutoApplyDefaults,
-} from './utils/smart-defaults';
+import { getSmartDefaults, shouldApplyDefaults } from './utils/smart-defaults';
 
 import './editor.scss';
 
@@ -77,35 +78,62 @@ const withSchemaOrgControls = createHigherOrderComponent( ( BlockEdit ) => {
 	return ( props ) => {
 		const { attributes, setAttributes, name, context, clientId } = props;
 		const { schemaOrg = {} } = attributes;
-		const parentSchemaContext = context[ 'schemaOrg/type' ];
+		const parentSchemaContext = context?.[ 'schemaOrg/type' ];
+		const parentType = parentSchemaContext?.type;
 
-		// Collect schema properties already claimed by direct child blocks via isProperty,
-		// so AttributeMappingControls can exclude them from the parent's picker.
-		const claimedProperties = useSelect(
+		// Properties already claimed by direct child blocks via isProperty, so
+		// AttributeMappingControls can exclude them from the parent's picker.
+		// Joined to a string so the selector returns a stable value.
+		const claimedKey = useSelect(
 			( select ) => {
 				if ( ! schemaOrg.type ) {
-					return [];
+					return '';
 				}
-				const blocks =
-					select( 'core/block-editor' ).getBlocks( clientId );
-				return blocks
+				return select( blockEditorStore )
+					.getBlocks( clientId )
 					.filter( ( b ) => b.attributes?.schemaOrg?.isProperty )
 					.map( ( b ) => b.attributes.schemaOrg.propertyName )
-					.filter( Boolean );
+					.filter( Boolean )
+					.join( ',' );
 			},
 			[ schemaOrg.type, clientId ]
 		);
+		const claimedProperties = claimedKey ? claimedKey.split( ',' ) : [];
 
-		// Auto-apply smart defaults if applicable.
-		if ( shouldAutoApplyDefaults( name, schemaOrg, parentSchemaContext ) ) {
-			const defaults = getSmartDefaults( name, parentSchemaContext );
-			if (
-				defaults &&
-				JSON.stringify( schemaOrg ) !== JSON.stringify( defaults )
-			) {
+		const applyDefaults = useSelect(
+			( select ) => {
+				if ( ! parentType ) {
+					return false;
+				}
+				const { getBlock, getBlockRootClientId, getBlocks } =
+					select( blockEditorStore );
+				const block = getBlock( clientId );
+				return (
+					!! block &&
+					shouldApplyDefaults(
+						block,
+						parentType,
+						getBlocks( getBlockRootClientId( clientId ) )
+					)
+				);
+			},
+			[ parentType, clientId ]
+		);
+
+		const { __unstableMarkNextChangeAsNotPersistent } =
+			useDispatch( blockEditorStore );
+
+		useEffect( () => {
+			if ( ! applyDefaults ) {
+				return;
+			}
+			const defaults = getSmartDefaults( name, parentType );
+			if ( defaults ) {
+				// Fold the change into the undo step that inserted or retyped the block.
+				__unstableMarkNextChangeAsNotPersistent();
 				setAttributes( { schemaOrg: defaults } );
 			}
-		}
+		}, [ applyDefaults ] ); // eslint-disable-line react-hooks/exhaustive-deps
 
 		const updateSchemaOrg = ( updates ) => {
 			setAttributes( {
@@ -120,7 +148,13 @@ const withSchemaOrgControls = createHigherOrderComponent( ( BlockEdit ) => {
 			<Fragment>
 				<BlockEdit { ...props } />
 				<InspectorControls>
-					<PanelBody title="Schema.org Mapping" initialOpen={ false }>
+					<PanelBody
+						title={ __(
+							'Schema.org Mapping',
+							'schema-org-blocks'
+						) }
+						initialOpen={ false }
+					>
 						<SchemaTypeSelector
 							value={ schemaOrg.type }
 							parentSchemaType={ parentSchemaContext?.type }
@@ -128,7 +162,11 @@ const withSchemaOrgControls = createHigherOrderComponent( ( BlockEdit ) => {
 							isProperty={ schemaOrg.isProperty }
 							propertyName={ schemaOrg.propertyName }
 							onPropertyChange={ ( propertyName, isProperty ) =>
-								updateSchemaOrg( { propertyName, isProperty } )
+								updateSchemaOrg( {
+									propertyName,
+									isProperty,
+									skipDefaults: ! isProperty,
+								} )
 							}
 						/>
 
