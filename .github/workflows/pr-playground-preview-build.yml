@@ -1,0 +1,24 @@
+name: PR Playground Preview Build
+
+on:
+    pull_request:
+        types:
+            - opened
+            - synchronize
+            - reopened
+            - edited
+
+jobs:
+    build:
+        permissions:
+            contents: read
+        uses: WordPress/action-wp-playground-pr-preview/.github/workflows/preview-build.yml@v4
+        with:
+            node-version: '24'
+            artifacts: schema-org-blocks=schema-org-blocks.zip
+            build-command: |
+                set -euo pipefail
+                npm ci
+                sed -i "s/__VERSION__/pr-${{ github.event.pull_request.number }}-$(git rev-parse --short HEAD)/g" schema-org-blocks.php
+                npm run build
+                npm run plugin-zip

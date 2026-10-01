@@ -1,0 +1,50 @@
+name: PR Playground Preview Publish
+
+on:
+    workflow_run:
+        workflows:
+            - PR Playground Preview Build
+        types:
+            - completed
+
+jobs:
+    publish:
+        permissions:
+            contents: write
+            pull-requests: write
+        uses: WordPress/action-wp-playground-pr-preview/.github/workflows/preview-publish.yml@v4
+        with:
+            blueprint: |
+                {
+                    "$schema": "https://playground.wordpress.net/blueprint-schema.json",
+                    "landingPage": "/wp-admin/post-new.php",
+                    "preferredVersions": {
+                        "php": "8.3",
+                        "wp": "latest"
+                    },
+                    "steps": [
+                        {
+                            "step": "login"
+                        },
+                        {
+                            "step": "installTheme",
+                            "themeData": {
+                                "resource": "wordpress.org/themes",
+                                "slug": "twentytwentyfive"
+                            },
+                            "options": {
+                                "activate": true
+                            }
+                        },
+                        {
+                            "step": "installPlugin",
+                            "pluginData": {
+                                "resource": "url",
+                                "url": "{{ARTIFACT_URL:schema-org-blocks}}"
+                            },
+                            "options": {
+                                "activate": true
+                            }
+                        }
+                    ]
+                }
