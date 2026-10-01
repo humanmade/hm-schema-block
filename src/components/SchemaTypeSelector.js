@@ -18,55 +18,40 @@ const SchemaTypeSelector = ( {
 } ) => {
 	const { schemaTypes, schemaProperties } = window.schemaOrgBlocksData || {};
 
-	// Get available schema types based on context.
+	// Types offered: for a property block, object types the property accepts (and their
+	// subtypes); otherwise every type.
 	const availableTypes = useMemo( () => {
 		if ( ! schemaTypes ) {
 			return [];
 		}
 
-		// If there's a parent schema type, filter to valid subtypes.
-		if ( parentSchemaType ) {
-			const parentProperties =
-				schemaProperties?.[ parentSchemaType ] || {};
-			const validTypes = new Set();
+		let typeNames = Object.keys( schemaTypes );
 
-			// Add types that are valid for parent properties.
-			Object.entries( parentProperties ).forEach(
-				( [ , propConfig ] ) => {
-					const propTypes = Array.isArray( propConfig.type )
-						? propConfig.type
-						: [ propConfig.type ];
-
-					propTypes.forEach( ( type ) => {
-						validTypes.add( type );
-						// Also add subtypes.
-						Object.entries( schemaTypes ).forEach(
-							( [ typeName ] ) => {
-								if (
-									isSubtypeOf( typeName, type, schemaTypes )
-								) {
-									validTypes.add( typeName );
-								}
-							}
-						);
-					} );
-				}
+		if ( isProperty ) {
+			const accepted = [].concat(
+				schemaProperties?.[ parentSchemaType ]?.[ propertyName ]
+					?.type || []
 			);
-
-			return Array.from( validTypes ).map( ( type ) => ( {
-				label: schemaTypes[ type ]?.label || type,
-				value: type,
-			} ) );
+			typeNames = typeNames.filter( ( typeName ) =>
+				accepted.some(
+					( type ) =>
+						type === typeName ||
+						isSubtypeOf( typeName, type, schemaTypes )
+				)
+			);
 		}
 
-		// Otherwise, show all top-level types.
-		return Object.entries( schemaTypes ).map(
-			( [ typeName, typeConfig ] ) => ( {
-				label: typeConfig.label || typeName,
-				value: typeName,
-			} )
-		);
-	}, [ parentSchemaType, schemaTypes, schemaProperties ] );
+		return typeNames.map( ( typeName ) => ( {
+			label: schemaTypes[ typeName ].label || typeName,
+			value: typeName,
+		} ) );
+	}, [
+		isProperty,
+		parentSchemaType,
+		propertyName,
+		schemaTypes,
+		schemaProperties,
+	] );
 
 	// Get available property names if parent has schema type.
 	const availableProperties = useMemo( () => {
@@ -161,9 +146,13 @@ const SchemaTypeSelector = ( {
 				</>
 			) }
 
-			{ ! isProperty && (
+			{ ( ! isProperty || availableTypes.length > 0 ) && (
 				<SelectControl
-					label={ __( 'Schema Type', 'schema-org-blocks' ) }
+					label={
+						isProperty
+							? __( 'Value Type', 'schema-org-blocks' )
+							: __( 'Schema Type', 'schema-org-blocks' )
+					}
 					value={ value || '' }
 					options={ [
 						{ label: __( 'None', 'schema-org-blocks' ), value: '' },
@@ -171,9 +160,9 @@ const SchemaTypeSelector = ( {
 					] }
 					onChange={ handleTypeChange }
 					help={
-						parentSchemaType
+						isProperty
 							? __(
-									'Select a schema type or leave empty to use parent type',
+									"Pick a type to output this property as a nested object. Leave as None to use the block's text.",
 									'schema-org-blocks'
 							  )
 							: __(
