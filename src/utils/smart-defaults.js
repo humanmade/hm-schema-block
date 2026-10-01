@@ -236,6 +236,16 @@ export function shouldApplyDefaults( block, parentType, siblings ) {
 }
 
 /**
+ * The schemaOrg attribute of a block with no schema setup.
+ */
+const EMPTY_CONFIG = {
+	type: null,
+	mappings: {},
+	isProperty: false,
+	propertyName: null,
+};
+
+/**
  * Whether a block type has a smart default rule that repeats across siblings.
  *
  * @param {string} blockName Block name.
@@ -249,7 +259,8 @@ function isRepeatable( blockName ) {
  * Work out smart defaults for a block tree, as if every block were newly inserted.
  *
  * Blocks with a default get it, replacing their current config. A block that becomes typed
- * passes its type on to its own inner blocks. Blocks without a default are left alone.
+ * passes its type on to its own inner blocks. Blocks without a default are left alone, unless
+ * they are mapped to a property the parent type does not have, which is cleared.
  *
  * @param {Object[]} blocks     Inner blocks of the typed block, from getBlocks().
  * @param {string}   parentType The typed block's schema type.
@@ -267,10 +278,21 @@ export function getTreeDefaults( blocks, parentType ) {
 			.map( ( block ) => block.attributes.schemaOrg.propertyName )
 	);
 
+	const parentProperties =
+		window.schemaOrgBlocksData?.schemaProperties?.[ parentType ] || {};
+
 	blocks.forEach( ( block ) => {
 		const defaults = getSmartDefaults( block.name, parentType );
+		const current = block.attributes?.schemaOrg;
 
 		if ( ! defaults ) {
+			// Unlink blocks mapped to a property the new parent type does not have.
+			if (
+				current?.isProperty &&
+				! parentProperties[ current.propertyName ]
+			) {
+				updates[ block.clientId ] = { ...EMPTY_CONFIG };
+			}
 			return;
 		}
 
