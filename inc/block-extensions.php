@@ -78,6 +78,16 @@ function get_config( array $block ) : array {
 }
 
 /**
+ * Whether a block is hidden with the block visibility support, so it and its inner blocks do not render.
+ *
+ * @param array<string, mixed> $block Parsed block.
+ * @return bool
+ */
+function is_hidden( array $block ) : bool {
+	return false === ( $block['attrs']['metadata']['blockVisibility'] ?? null );
+}
+
+/**
  * Whether a block is a standalone schema entity, rather than a property of its parent.
  *
  * @param array<string, mixed> $block Parsed block.
@@ -85,7 +95,7 @@ function get_config( array $block ) : array {
  */
 function is_entity( array $block ) : bool {
 	$config = get_config( $block );
-	return null !== $config['type'] && ! $config['isProperty'];
+	return null !== $config['type'] && ! $config['isProperty'] && ! is_hidden( $block );
 }
 
 /**
@@ -98,6 +108,10 @@ function extract_schema( array $blocks ) : array {
 	$schema = [];
 
 	foreach ( $blocks as $block ) {
+		if ( is_hidden( $block ) ) {
+			continue;
+		}
+
 		if ( is_entity( $block ) ) {
 			$object = build_schema_object( $block );
 			if ( $object ) {
@@ -144,7 +158,7 @@ function build_schema_object( array $block ) : array {
 		$child_config = get_config( $child );
 		$property     = $child_config['propertyName'];
 
-		if ( ! $child_config['isProperty'] || null === $property ) {
+		if ( ! $child_config['isProperty'] || null === $property || is_hidden( $child ) ) {
 			continue;
 		}
 

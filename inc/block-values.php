@@ -251,12 +251,27 @@ function get_inner_blocks( array $block ) : array {
 		return [];
 	}
 
-	$pattern = get_post( $ref );
-	if ( ! $pattern || 'wp_block' !== $pattern->post_type || 'publish' !== $pattern->post_status ) {
-		return [];
+	return tag_pattern_refs( get_pattern_blocks( $ref ), array_merge( $ancestors, [ $ref ] ) );
+}
+
+/**
+ * Get the parsed blocks of a published synced pattern, or none if it cannot be shown.
+ *
+ * Password-protected patterns are skipped, as core/block does when rendering.
+ *
+ * @param int $ref Pattern post ID.
+ * @return array<int, array<string, mixed>>
+ */
+function get_pattern_blocks( int $ref ) : array {
+	static $parsed = [];
+
+	if ( ! isset( $parsed[ $ref ] ) ) {
+		$pattern        = get_post( $ref );
+		$is_visible     = $pattern && 'wp_block' === $pattern->post_type && 'publish' === $pattern->post_status && '' === $pattern->post_password;
+		$parsed[ $ref ] = $is_visible ? parse_blocks( $pattern->post_content ) : [];
 	}
 
-	return tag_pattern_refs( parse_blocks( $pattern->post_content ), array_merge( $ancestors, [ $ref ] ) );
+	return $parsed[ $ref ];
 }
 
 /**

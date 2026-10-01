@@ -12,6 +12,7 @@
 namespace SchemaOrgBlocks\SchemaOutput;
 
 use SchemaOrgBlocks\BlockExtensions;
+use SchemaOrgBlocks\BlockValues;
 use WP_Post;
 
 /**
@@ -63,6 +64,21 @@ function add_objects( array $objects ) : void {
 }
 
 /**
+ * Remove schema objects from the collection.
+ *
+ * @param array<int, array<string, mixed>> $objects Schema objects.
+ */
+function remove_objects( array $objects ) : void {
+	$collected = state()['objects'];
+
+	foreach ( $objects as $object ) {
+		unset( $collected[ md5( (string) wp_json_encode( $object ) ) ] );
+	}
+
+	state( [ 'objects' => $collected ] );
+}
+
+/**
  * Start collecting once the front-end template is chosen.
  *
  * @param string $template Template file path.
@@ -76,7 +92,7 @@ function start_collecting( $template ) {
 		]
 	);
 
-	if ( ! empty( $GLOBALS['_wp_current_template_content'] ) ) {
+	if ( ! empty( $GLOBALS['_wp_current_template_content'] ) && 'template-canvas.php' === basename( (string) $template ) ) {
 		state( [ 'collecting' => true ] );
 		return $template;
 	}
@@ -93,7 +109,9 @@ function start_collecting( $template ) {
 /**
  * Collect the schema object of a typed block as it renders.
  *
- * Excerpts are skipped: they render a trimmed copy of a post's blocks.
+ * Skipped: excerpts, which render a trimmed copy of a post's blocks, and the content of posts
+ * other than the queried one, such as full posts in a query loop. When a hidden block renders,
+ * the objects its inner blocks added are removed again.
  *
  * @param string               $block_content Rendered block content.
  * @param array<string, mixed> $block         Parsed block.
@@ -101,6 +119,15 @@ function start_collecting( $template ) {
  */
 function collect_rendered_block( $block_content, $block ) {
 	if ( ! state()['collecting'] || ! is_array( $block ) || doing_filter( 'get_the_excerpt' ) ) {
+		return $block_content;
+	}
+
+	if ( doing_filter( 'the_content' ) && get_the_ID() !== get_queried_object_id() ) {
+		return $block_content;
+	}
+
+	if ( BlockExtensions\is_hidden( $block ) ) {
+		remove_objects( BlockExtensions\extract_schema( BlockValues\get_inner_blocks( $block ) ) );
 		return $block_content;
 	}
 
