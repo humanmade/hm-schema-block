@@ -315,3 +315,31 @@ export function getTreeDefaults( blocks, parentType ) {
 
 	return updates;
 }
+
+/**
+ * Whether a parent's property accepts a schema type, directly or as a subtype.
+ *
+ * @param {string} parentType   Parent block's schema type.
+ * @param {string} propertyName Property of the parent.
+ * @param {string} type         Schema type to check.
+ * @return {boolean} Whether the property accepts the type.
+ */
+export function propertyAcceptsType( parentType, propertyName, type ) {
+	const { schemaTypes = {}, schemaProperties = {} } =
+		window.schemaOrgBlocksData || {};
+	const accepted = [].concat(
+		schemaProperties[ parentType ]?.[ propertyName ]?.type || []
+	);
+
+	for (
+		let current = type;
+		current;
+		current = schemaTypes[ current ]?.parent
+	) {
+		if ( accepted.includes( current ) ) {
+			return true;
+		}
+	}
+
+	return false;
+}

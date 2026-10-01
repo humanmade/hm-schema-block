@@ -534,6 +534,37 @@ test.describe( 'FAQ and how-to presets', () => {
 		} );
 	} );
 
+	test( 'changing the property clears a value type it does not accept', async ( {
+		editor,
+		page,
+		schemaPanel,
+	} ) => {
+		const { option } = await insertFromInserter( page, 'FAQ', 'FAQ' );
+		await option.click();
+		await fillAccordionItem( editor, page, 0, 'Why?', 'Because.' );
+
+		await editor.selectBlocks(
+			editor.canvas
+				.locator( '[data-type="core/accordion-panel"]' )
+				.first()
+		);
+		await schemaPanel.open();
+		await schemaPanel.sidebar
+			.getByLabel( 'Value Type' )
+			.selectOption( 'Answer' );
+		await schemaPanel.sidebar
+			.getByLabel( 'Property Name' )
+			.selectOption( 'name' );
+
+		const [ accordion ] = await editor.getBlocks();
+		const [ , , [ , panel ] ] = schemaTree( accordion.innerBlocks )[ 0 ];
+		expect( panel[ 1 ] ).toMatchObject( {
+			type: null,
+			isProperty: true,
+			propertyName: 'name',
+		} );
+	} );
+
 	test( 'a new type and re-apply clear step links the type does not have', async ( {
 		editor,
 		schemaPanel,
