@@ -162,9 +162,14 @@ function build_schema_object( array $block ) : array {
 			continue;
 		}
 
-		$value = null !== $child_config['type']
-			? build_schema_object( $child )
-			: get_property_value( $child, $property );
+		if ( null === $child_config['type'] ) {
+			$value = get_property_value( $child, $property );
+		} else {
+			// A typed child with nothing mapped falls back to its text, as an object of its type.
+			$value = build_schema_object( $child );
+			$text  = $value ? null : get_property_value( $child, $property );
+			$value = is_empty_value( $text ) ? $value : wrap_value( $child_config['type'], $text );
+		}
 
 		if ( ! is_empty_value( $value ) ) {
 			$from_children[ $property ][] = coerce_value( $type, $property, $value );
@@ -200,7 +205,9 @@ function get_property_value( array $block, string $property ) {
 /**
  * Resolve a property mapping against a block.
  *
- * An attribute mapping with no attribute name falls back to the block's text content.
+ * Sources: `attribute` (a block attribute; with no attribute name, the block's text),
+ * `content` (the block's text), `innerBlocks` (the text of its inner blocks only, e.g. a
+ * details block without its summary) and `post` (a field of the current post: `title` or `url`).
  *
  * @param array<string, mixed> $block   Parsed block.
  * @param array<string, mixed> $mapping Mapping, e.g. [ 'source' => 'attribute', 'attributeName' => 'url' ].
@@ -216,6 +223,38 @@ function resolve_mapping( array $block, array $mapping ) {
 
 	if ( 'attribute' === $source || 'content' === $source ) {
 		return BlockValues\get_text( BlockValues\get_html( $block ) );
+	}
+
+	if ( 'innerBlocks' === $source ) {
+		$html = array_map( 'SchemaOrgBlocks\\BlockValues\\get_html', BlockValues\get_inner_blocks( $block ) );
+		return BlockValues\get_text( implode( "\n", $html ) );
+	}
+
+	if ( 'post' === $source ) {
+		return get_post_field_value( (string) ( $mapping['field'] ?? 'title' ) );
+	}
+
+	return null;
+}
+
+/**
+ * Get a field of the current post for a `post` mapping.
+ *
+ * @param string $field `title` or `url`.
+ * @return string|null
+ */
+function get_post_field_value( string $field ) : ?string {
+	$post = get_post();
+
+	if ( ! $post ) {
+		return null;
+	}
+
+	switch ( $field ) {
+		case 'title':
+			return BlockValues\get_text( get_the_title( $post ) );
+		case 'url':
+			return get_permalink( $post ) ?: null;
 	}
 
 	return null;
@@ -247,8 +286,20 @@ function coerce_value( string $type, string $property, $value ) {
 		return $value;
 	}
 
-	$target     = $expected[0];
-	$properties = SchemaTypes\get_type_properties( $target );
+	return wrap_value( $expected[0], $value );
+}
+
+/**
+ * Wrap a plain value in an object of a schema type.
+ *
+ * URLs go in contentUrl or url when the type has one, other values in text or name.
+ *
+ * @param string                $type  Schema type.
+ * @param string|int|float|bool $value Value.
+ * @return array<string, mixed>
+ */
+function wrap_value( string $type, $value ) : array {
+	$properties = SchemaTypes\get_type_properties( $type );
 
 	$is_url = is_string( $value ) && preg_match( '#^https?://#i', $value ) && false !== filter_var( $value, FILTER_VALIDATE_URL );
 
@@ -259,7 +310,7 @@ function coerce_value( string $type, string $property, $value ) {
 	}
 
 	return [
-		'@type' => $target,
+		'@type' => $type,
 		$key    => $value,
 	];
 }

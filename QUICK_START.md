@@ -18,15 +18,25 @@ npm run playground:start
 
 ## Basic Usage
 
+### FAQ and How-to
+
+1. Create a new post and open the block inserter
+2. Search for **FAQ** or **How-to** and insert it. Both are variations of the Accordion block.
+3. Fill in the headings and panels. Each item becomes a Question with an answer, or a HowToStep. The How-to is named after the post title.
+
+Already have an Accordion or Group block? Select it, open **"Schema.org Mapping"** and click **FAQ** or **How-to** under Quick setup. Details blocks inside an FAQ become questions too: the summary is the question and the inner blocks are the answer.
+
+Google shows FAQ rich results only for some sites and no longer shows how-to rich results. The markup is still valid and other consumers use it.
+
 ### 1. Create an Article with Schema
 
 1. Create a new post in WordPress
 2. Add a **Group** block (or any container block)
 3. In the block inspector sidebar, open **"Schema.org Mapping"**
 4. Select **"Article"** as the Schema Type
-5. Add attribute mappings:
-   - Map `headline` → Block Content
-   - Map `articleBody` → Block Content
+5. Add a **Heading** and a **Paragraph** inside the Group. They map to `headline` and `description` on their own.
+
+You can also add mappings on the Group itself. Each mapping has a source: Block attribute, Block text, Inner blocks text, Post title or Post URL. For example, map `headline` to Post title.
 
 ### 2. Add an Image with Auto-Mapping
 
@@ -50,13 +60,11 @@ npm run playground:start
     {
       "@type": "Article",
       "headline": "My Article Title",
-      "articleBody": "Article content...",
+      "description": "Article summary...",
       "image": {
         "@type": "ImageObject",
         "contentUrl": "https://example.com/image.jpg",
-        "caption": "Image caption",
-        "width": 1200,
-        "height": 800
+        "caption": "Image caption"
       }
     }
   ]
@@ -106,22 +114,22 @@ These blocks automatically configure when nested in a schema context:
 
 | Block | Auto-maps to | As type |
 |-------|--------------|---------|
-| **Image** | `image` property | ImageObject |
+| **Image** | `image` or `logo` | ImageObject |
 | **Button** | `url` property | URL |
 | **Heading** | `headline` or `name` | Text |
 | **Paragraph** | `description` or `text` | Text |
+| **Accordion item** | `mainEntity` or `step` | Question or HowToStep |
+| **Accordion heading** | `name` | Text |
+| **Accordion panel** | `acceptedAnswer` or `text` | Answer or Text |
+| **Details** | `mainEntity` or `step` | Question or HowToStep |
+
+Only the first unconfigured block of each type gets a default, except images, accordion items and details blocks, which repeat. Headings and paragraphs inside a Question, Answer or HowToStep are left alone. To re-apply the defaults, select the typed block and click **Apply suggested mappings to inner blocks**.
 
 ## Hierarchical Types
 
-Some schema types have subtypes. The plugin automatically filters available types based on parent context:
+Some schema types have subtypes, and inherit their parent type's properties. **Example: Place → Accommodation → Room**
 
-**Example: Place → Accommodation → Room**
-
-1. Group block → Select "Place"
-2. Add nested Group → Options include "Accommodation"
-3. Add another nested Group → Options include "Room"
-
-This ensures valid schema hierarchies.
+When a block is mapped as a property of its parent, its **Value Type** list only shows the types that property accepts, plus their subtypes. Only direct children of a typed block can be its properties.
 
 ## Property Types
 
@@ -131,6 +139,8 @@ Some properties accept multiple types. Example: `image` can be:
 - **ImageObject** (object): Create nested schema with properties
 
 The smart defaults handle this automatically for images.
+
+Several blocks mapped to the same property give an array. Plain text for a property that only accepts objects is wrapped, so an `acceptedAnswer` becomes an `Answer` with `text`. Objects with no properties are left out.
 
 ## Testing Your Schema
 

@@ -61,6 +61,54 @@ function get_schema_types() : array {
 				'publisher' => [ 'type' => 'Organization', 'label' => 'Publisher' ],
 			],
 		],
+		'WebPage' => [
+			'label' => 'Web Page',
+			'parent' => 'CreativeWork',
+			'properties' => [
+				'mainEntity' => [ 'type' => 'Thing', 'label' => 'Main Entity' ],
+			],
+		],
+		'FAQPage' => [
+			'label' => 'FAQ Page',
+			'parent' => 'WebPage',
+			'properties' => [
+				'mainEntity' => [ 'type' => 'Question', 'label' => 'Questions' ],
+			],
+		],
+		'Comment' => [
+			'label' => 'Comment',
+			'parent' => 'CreativeWork',
+			'properties' => [],
+		],
+		'Question' => [
+			'label' => 'Question',
+			'parent' => 'Comment',
+			'properties' => [
+				'acceptedAnswer' => [ 'type' => [ 'Answer', 'ItemList' ], 'label' => 'Accepted Answer' ],
+				'suggestedAnswer' => [ 'type' => [ 'Answer', 'ItemList' ], 'label' => 'Suggested Answer' ],
+			],
+		],
+		'Answer' => [
+			'label' => 'Answer',
+			'parent' => 'Comment',
+			'properties' => [],
+		],
+		'HowTo' => [
+			'label' => 'How-to',
+			'parent' => 'CreativeWork',
+			'properties' => [
+				'step' => [ 'type' => [ 'HowToStep', 'HowToSection', 'Text' ], 'label' => 'Steps' ],
+				'totalTime' => [ 'type' => 'Duration', 'label' => 'Total Time' ],
+				'supply' => [ 'type' => [ 'HowToSupply', 'Text' ], 'label' => 'Supply' ],
+				'tool' => [ 'type' => [ 'HowToTool', 'Text' ], 'label' => 'Tool' ],
+				'yield' => [ 'type' => 'Text', 'label' => 'Yield' ],
+			],
+		],
+		'HowToStep' => [
+			'label' => 'How-to Step',
+			'parent' => 'CreativeWork',
+			'properties' => [],
+		],
 		'Organization' => [
 			'label' => 'Organization',
 			'parent' => 'Thing',

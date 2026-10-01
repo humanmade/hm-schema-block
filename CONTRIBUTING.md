@@ -6,8 +6,8 @@ Thank you for your interest in contributing to Schema.org Blocks! This document 
 
 1. **Clone the repository**
 ```bash
-git clone https://github.com/humanmade/schema-org-blocks.git
-cd schema-org-blocks
+git clone https://github.com/humanmade/hm-schema-block.git
+cd hm-schema-block
 ```
 
 2. **Install dependencies**
@@ -35,7 +35,7 @@ npm start
 We follow WordPress coding standards:
 
 - **JavaScript**: Run `npm run lint:js` to check for issues
-- **Formatting**: Run `npm run format:js` to auto-format code
+- **Formatting**: Run `npm run format` to auto-format code
 
 ### Testing
 
@@ -60,19 +60,22 @@ npm run build
 ## Project Structure
 
 ```
-schema-org-blocks/
+hm-schema-block/
 ├── inc/                          # PHP includes
 │   ├── namespace.php            # Plugin bootstrap
 │   ├── schema-types.php         # Schema.org type definitions
-│   ├── block-extensions.php     # Block attribute/context registration
-│   └── schema-output.php        # JSON-LD output handling
+│   ├── block-values.php         # Read attributes and text from block markup
+│   ├── block-extensions.php     # Block attribute/context registration, schema object builder
+│   └── schema-output.php        # Collection during render, JSON-LD and Yoast output
 ├── src/                          # JavaScript source
 │   ├── index.js                 # Main entry point
+│   ├── variations.js            # FAQ and How-to accordion variations
 │   ├── components/              # React components
 │   │   ├── SchemaTypeSelector.js
-│   │   └── AttributeMappingControls.js
+│   │   ├── AttributeMappingControls.js
+│   │   └── SchemaPresets.js     # Quick setup buttons
 │   ├── utils/                   # Utility functions
-│   │   └── smart-defaults.js
+│   │   └── smart-defaults.js    # Smart default rules and presets
 │   └── editor.scss              # Editor styles
 ├── tests/                        # Test files
 │   └── e2e/                     # Playwright e2e tests
@@ -100,24 +103,32 @@ Edit `inc/schema-types.php` and add to the `get_schema_types()` function:
 
 ### Adding Smart Defaults for Blocks
 
-Edit `src/utils/smart-defaults.js` and add logic in the `getSmartDefaults()` function:
+Edit `src/utils/smart-defaults.js` and add a rule to the `RULES` table, keyed by block name:
 
 ```javascript
-if ( blockName === 'core/my-block' ) {
-    // Return default configuration
-    return {
+'core/my-block': {
+    // Candidate parent properties; the first one the parent type has is used.
+    properties: [ 'someProperty' ],
+    // Optional: apply to every sibling, not just the first unconfigured one.
+    repeatable: false,
+    // Optional: parent types the rule does not apply in.
+    exceptParentTypes: [ 'Question' ],
+    // Optional: build the schemaOrg value. Without it the block is an untyped property.
+    build: ( propertyName ) => ( {
         type: null,
         isProperty: true,
-        propertyName: 'someProperty',
+        propertyName,
         mappings: {
-            someProperty: {
+            [ propertyName ]: {
                 source: 'attribute',
                 attributeName: 'myAttribute',
             },
         },
-    };
-}
+    } ),
+},
 ```
+
+The same rules drive defaults on insert, the Quick setup presets and the FAQ and How-to variations.
 
 ### Adding New UI Components
 
@@ -147,7 +158,7 @@ test( 'should do something', async ( { editor, page } ) => {
     await page.getByLabel( 'Schema Type' ).selectOption( 'Article' );
 
     // Assert
-    await expect( page.getByText( 'Attribute Mappings' ) ).toBeVisible();
+    await expect( page.getByText( 'Schema Property Mapping' ) ).toBeVisible();
 } );
 ```
 

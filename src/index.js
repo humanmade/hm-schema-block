@@ -17,8 +17,14 @@ import { __ } from '@wordpress/i18n';
 
 import SchemaTypeSelector from './components/SchemaTypeSelector';
 import AttributeMappingControls from './components/AttributeMappingControls';
-import { getSmartDefaults, shouldApplyDefaults } from './utils/smart-defaults';
+import SchemaPresets from './components/SchemaPresets';
+import {
+	getSmartDefaults,
+	propertyAcceptsType,
+	shouldApplyDefaults,
+} from './utils/smart-defaults';
 
+import './variations';
 import './editor.scss';
 
 /**
@@ -155,6 +161,11 @@ const withSchemaOrgControls = createHigherOrderComponent( ( BlockEdit ) => {
 						) }
 						initialOpen={ false }
 					>
+						<SchemaPresets
+							clientId={ clientId }
+							blockName={ name }
+							schemaOrg={ schemaOrg }
+						/>
 						<SchemaTypeSelector
 							value={ schemaOrg.type }
 							parentSchemaType={ parentSchemaContext?.type }
@@ -168,6 +179,18 @@ const withSchemaOrgControls = createHigherOrderComponent( ( BlockEdit ) => {
 												propertyName,
 												isProperty,
 												skipDefaults: false,
+												// Drop a value type the new property does not accept.
+												...( schemaOrg.type &&
+												! propertyAcceptsType(
+													parentType,
+													propertyName,
+													schemaOrg.type
+												)
+													? {
+															type: null,
+															mappings: {},
+													  }
+													: {} ),
 										  }
 										: {
 												type: null,
