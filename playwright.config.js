@@ -1,25 +1,18 @@
 const { defineConfig, devices } = require( '@playwright/test' );
-const crypto = require( 'crypto' );
+const { STORAGE_STATE_PATH } = require( './global-setup' );
 
 /**
- * Deterministic port from cwd hash so each git worktree gets its own
- * Playground instance. Override with WP_PLAYGROUND_PORT (e.g., in CI).
- * Range: 9400–9499.
+ * Playground is booted by global-setup.js, which writes the server URL to
+ * process.env.WP_BASE_URL. Set WP_BASE_URL directly to skip the boot and use
+ * an existing server (e.g. `npm run playground:start`).
+ *
+ * @see https://playwright.dev/docs/test-configuration
  */
-function resolvePort() {
-	if ( process.env.WP_PLAYGROUND_PORT ) {
-		return Number( process.env.WP_PLAYGROUND_PORT );
-	}
-	const hash = crypto.createHash( 'sha1' ).update( process.cwd() ).digest();
-	return 9400 + ( hash.readUInt16BE( 0 ) % 100 );
-}
-
-const port = resolvePort();
-const baseURL = process.env.WP_BASE_URL || `http://127.0.0.1:${ port }`;
-
 module.exports = defineConfig( {
 	testDir: './tests/e2e',
-	timeout: 60000,
+	globalSetup: require.resolve( './global-setup' ),
+	globalTeardown: require.resolve( './global-teardown' ),
+	timeout: 120000,
 	fullyParallel: false,
 	forbidOnly: !! process.env.CI,
 	retries: process.env.CI ? 2 : 0,
@@ -30,7 +23,8 @@ module.exports = defineConfig( {
 		[ 'json', { outputFile: 'test-results/results.json' } ],
 	],
 	use: {
-		baseURL,
+		baseURL: process.env.WP_BASE_URL,
+		storageState: STORAGE_STATE_PATH,
 		trace: 'on-first-retry',
 		screenshot: 'only-on-failure',
 		video: 'retain-on-failure',
@@ -43,16 +37,4 @@ module.exports = defineConfig( {
 			use: { ...devices[ 'Desktop Chrome' ] },
 		},
 	],
-	webServer: process.env.CI
-		? undefined
-		: {
-				command: `npm run playground:start -- --port=${ port }`,
-				url: baseURL,
-				reuseExistingServer: true,
-				timeout: 120000,
-				stdout: 'pipe',
-				wait: {
-					stdout: /Ready!/,
-				},
-		  },
 } );
