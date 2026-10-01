@@ -247,6 +247,16 @@ Schema data is output as JSON-LD in the site header. The characters `<`, `>` and
 </script>
 ```
 
+## Known Limitations
+
+Schema is built from the saved block markup, not from the final rendered HTML. This keeps output fast and the same in block and classic themes, but it has some effects:
+
+- Pattern overrides and block bindings are not applied. A synced pattern with overridden text gives the pattern's own text, and a block bound to post meta gives its saved fallback.
+- Plugins that hide content with `pre_render_block`, `render_block_data` or `the_content`, such as membership or paywall plugins, do not hide it from the schema. Do not map members-only content to schema properties. You can remove it with the `schema_org_blocks_graph` filter.
+- Only direct inner blocks of a typed block can be its properties.
+
+Blocks hidden with the block visibility setting, and password-protected posts and synced patterns, are left out.
+
 ## Requirements
 
 - WordPress 6.9+
