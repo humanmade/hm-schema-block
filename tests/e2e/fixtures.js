@@ -110,12 +110,35 @@ const test = base.extend( {
 		);
 	},
 
-	// Publishes the current post, opens it on the front end and returns the
-	// parsed JSON-LD from <head>.
-	publishAndGetJsonLd: async ( { editor, page }, use ) => {
+	// Publishes the current post and opens it on the front end. Returns the
+	// raw HTML of the response.
+	publishAndView: async ( { editor, page }, use ) => {
 		await use( async () => {
 			const postId = await editor.publishPost();
-			await page.goto( `/?p=${ postId }` );
+			const response = await page.goto( `/?p=${ postId }` );
+			return response.text();
+		} );
+	},
+
+	// Parses the JSON-LD script in <head> of the current page, or returns
+	// null when there is none.
+	getJsonLd: async ( { page }, use ) => {
+		await use( async () => {
+			const script = page.locator(
+				'head script[type="application/ld+json"]'
+			);
+			if ( ( await script.count() ) === 0 ) {
+				return null;
+			}
+			return JSON.parse( await script.textContent() );
+		} );
+	},
+
+	// Publishes the current post, opens it on the front end and returns the
+	// parsed JSON-LD from <head>.
+	publishAndGetJsonLd: async ( { page, publishAndView }, use ) => {
+		await use( async () => {
+			await publishAndView();
 			const script = page.locator(
 				'head script[type="application/ld+json"]'
 			);

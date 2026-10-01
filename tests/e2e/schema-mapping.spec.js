@@ -295,5 +295,315 @@ test.describe( 'Schema.org Frontend Output', () => {
 		expect( persons ).toHaveLength( 0 );
 	} );
 
+	test( 'image in an Article group becomes an ImageObject', async ( {
+		editor,
+		getSchemaTree,
+		publishAndGetJsonLd,
+	} ) => {
+		await editor.insertBlock( {
+			name: 'core/group',
+			attributes: { schemaOrg: schemaOrg( { type: 'Article' } ) },
+			innerBlocks: [
+				{
+					name: 'core/image',
+					attributes: {
+						url: 'https://example.com/photo.jpg',
+						caption: 'A photo caption',
+					},
+				},
+			],
+		} );
+
+		// Smart defaults configure the image without any UI interaction.
+		await expect
+			.poll( async () => ( await getSchemaTree() )[ 0 ].innerBlocks[ 0 ] )
+			.toMatchObject( {
+				schemaOrg: {
+					type: 'ImageObject',
+					isProperty: true,
+					propertyName: 'image',
+					mappings: {
+						contentUrl: {
+							source: 'attribute',
+							attributeName: 'url',
+						},
+						caption: {
+							source: 'attribute',
+							attributeName: 'caption',
+						},
+					},
+				},
+			} );
+
+		const data = await publishAndGetJsonLd();
+		const article = data[ '@graph' ].find(
+			( n ) => n[ '@type' ] === 'Article'
+		);
+
+		expect( article.image ).toEqual( {
+			'@type': 'ImageObject',
+			contentUrl: 'https://example.com/photo.jpg',
+			caption: 'A photo caption',
+		} );
+	} );
+
+	test( 'two images in an Article group produce an image array', async ( {
+		editor,
+		getSchemaTree,
+		publishAndGetJsonLd,
+	} ) => {
+		const urls = [
+			'https://example.com/one.jpg',
+			'https://example.com/two.jpg',
+		];
+		await editor.insertBlock( {
+			name: 'core/group',
+			attributes: { schemaOrg: schemaOrg( { type: 'Article' } ) },
+			innerBlocks: urls.map( ( url ) => ( {
+				name: 'core/image',
+				attributes: { url },
+			} ) ),
+		} );
+
+		await expect
+			.poll( async () =>
+				( await getSchemaTree() )[ 0 ].innerBlocks.map(
+					( b ) => b.schemaOrg.propertyName
+				)
+			)
+			.toEqual( [ 'image', 'image' ] );
+
+		const data = await publishAndGetJsonLd();
+		const article = data[ '@graph' ].find(
+			( n ) => n[ '@type' ] === 'Article'
+		);
+
+		expect( article.image ).toEqual(
+			urls.map( ( contentUrl ) => ( {
+				'@type': 'ImageObject',
+				contentUrl,
+			} ) )
+		);
+	} );
+
+	test( 'plain value for an object-only property is wrapped in an object', async ( {
+		editor,
+		publishAndGetJsonLd,
+	} ) => {
+		await editor.insertBlock( {
+			name: 'core/group',
+			attributes: { schemaOrg: schemaOrg( { type: 'Article' } ) },
+			innerBlocks: [
+				{
+					name: 'core/paragraph',
+					attributes: {
+						content: 'Jane Doe',
+						schemaOrg: schemaOrg( {
+							isProperty: true,
+							propertyName: 'author',
+						} ),
+					},
+				},
+			],
+		} );
+
+		const data = await publishAndGetJsonLd();
+		const article = data[ '@graph' ].find(
+			( n ) => n[ '@type' ] === 'Article'
+		);
+
+		expect( article.author ).toEqual( {
+			'@type': 'Person',
+			name: 'Jane Doe',
+		} );
+	} );
+
+	test( 'text containing a closing script tag cannot break out of JSON-LD', async ( {
+		editor,
+		page,
+		publishAndView,
+		getJsonLd,
+	} ) => {
+		const payload = '</script><script>window.__schemaXss=1</script>';
+
+		// Entity-encoded, as rich text stores typed text.
+		await editor.insertBlock( {
+			name: 'core/paragraph',
+			attributes: {
+				content: payload
+					.replace( /</g, '&lt;' )
+					.replace( />/g, '&gt;' ),
+				schemaOrg: schemaOrg( {
+					type: 'Person',
+					mappings: { name: { source: 'content' } },
+				} ),
+			},
+		} );
+
+		const html = await publishAndView();
+		const data = await getJsonLd();
+
+		expect( data ).not.toBeNull();
+		expect(
+			data[ '@graph' ].find( ( n ) => n[ '@type' ] === 'Person' )
+		).toMatchObject( {
+			name: payload,
+		} );
+		expect( await page.evaluate( () => typeof window.__schemaXss ) ).toBe(
+			'undefined'
+		);
+
+		const rawJson = html.match(
+			/<script type="application\/ld\+json">([\s\S]*?)<\/script>/
+		)[ 1 ];
+		expect( rawJson ).not.toContain( '</script><script>' );
+		expect( rawJson ).not.toContain( '<' );
+	} );
+
+	test( 'typed block with no properties emits nothing', async ( {
+		editor,
+		publishAndView,
+		getJsonLd,
+	} ) => {
+		await editor.insertBlock( {
+			name: 'core/group',
+			attributes: { schemaOrg: schemaOrg( { type: 'Article' } ) },
+		} );
+
+		await publishAndView();
+		const data = await getJsonLd();
+		const articles = ( data?.[ '@graph' ] ?? [] ).filter(
+			( n ) => n[ '@type' ] === 'Article'
+		);
+
+		expect( articles ).toHaveLength( 0 );
+	} );
+
+	test( 'property heading without mappings uses its text', async ( {
+		editor,
+		publishAndGetJsonLd,
+	} ) => {
+		await editor.insertBlock( {
+			name: 'core/group',
+			attributes: { schemaOrg: schemaOrg( { type: 'Article' } ) },
+			innerBlocks: [
+				{
+					name: 'core/heading',
+					attributes: {
+						content: 'Hello <em>World</em>',
+						schemaOrg: schemaOrg( {
+							isProperty: true,
+							propertyName: 'headline',
+						} ),
+					},
+				},
+			],
+		} );
+
+		const data = await publishAndGetJsonLd();
+		const article = data[ '@graph' ].find(
+			( n ) => n[ '@type' ] === 'Article'
+		);
+
+		expect( article.headline ).toBe( 'Hello World' );
+	} );
+
 	test.skip( 'template group wrapping core/post-content produces a valid schema graph', () => {} );
+} );
+
+test.describe( 'Schema.org Smart Defaults', () => {
+	test.beforeEach( async ( { newPost } ) => {
+		await newPost();
+	} );
+
+	test( 'turning off "Map as property of parent" stays off', async ( {
+		editor,
+		insertBlock,
+		schemaPanel,
+		getSchemaTree,
+	} ) => {
+		const groupId = await insertBlock( {
+			name: 'core/group',
+			attributes: { schemaOrg: schemaOrg( { type: 'Article' } ) },
+		} );
+		const headingId = await insertBlock(
+			{ name: 'core/heading', attributes: { content: 'Title' } },
+			groupId
+		);
+
+		await expect
+			.poll( async () => ( await getSchemaTree( headingId ) ).schemaOrg )
+			.toMatchObject( { isProperty: true, propertyName: 'headline' } );
+
+		await schemaPanel.open();
+		const toggle = schemaPanel.sidebar.getByLabel(
+			'Map as property of parent'
+		);
+		await toggle.uncheck();
+		await expect( toggle ).not.toBeChecked();
+
+		await editor.selectBlocks(
+			editor.canvas.locator( `#block-${ groupId }` )
+		);
+		await editor.selectBlocks(
+			editor.canvas.locator( `#block-${ headingId }` )
+		);
+		await schemaPanel.open();
+
+		await expect( toggle ).not.toBeChecked();
+		expect( ( await getSchemaTree( headingId ) ).schemaOrg ).toMatchObject(
+			{
+				isProperty: false,
+				skipDefaults: true,
+			}
+		);
+	} );
+
+	test( 'only the first paragraph gets the description default', async ( {
+		editor,
+		getSchemaTree,
+	} ) => {
+		await editor.insertBlock( {
+			name: 'core/group',
+			attributes: { schemaOrg: schemaOrg( { type: 'Article' } ) },
+			innerBlocks: [
+				{ name: 'core/paragraph', attributes: { content: 'First' } },
+				{ name: 'core/paragraph', attributes: { content: 'Second' } },
+			],
+		} );
+
+		await expect
+			.poll( async () => ( await getSchemaTree() )[ 0 ].innerBlocks[ 0 ] )
+			.toMatchObject( {
+				schemaOrg: { isProperty: true, propertyName: 'description' },
+			} );
+
+		const [ , second ] = ( await getSchemaTree() )[ 0 ].innerBlocks;
+		expect( second.schemaOrg.isProperty ).toBeFalsy();
+		expect( second.schemaOrg.propertyName ).toBeFalsy();
+	} );
+
+	test( 'server-rendered core blocks load in the editor', async ( {
+		editor,
+		page,
+	} ) => {
+		const rendered = page.waitForResponse( ( response ) =>
+			response.url().includes( 'block-renderer/core/archives' )
+		);
+		await editor.insertBlock( { name: 'core/latest-posts' } );
+		await editor.insertBlock( { name: 'core/archives' } );
+
+		expect( ( await rendered ).status() ).toBe( 200 );
+		await expect(
+			editor.canvas.locator( '.wp-block-latest-posts' )
+		).toBeVisible();
+		const archives = editor.canvas.locator( '[data-type="core/archives"]' );
+		await expect( archives.locator( '.components-spinner' ) ).toHaveCount(
+			0
+		);
+		await expect( archives ).not.toBeEmpty();
+		await expect(
+			editor.canvas.getByText( /Error loading block|Invalid parameter/ )
+		).toHaveCount( 0 );
+	} );
 } );
