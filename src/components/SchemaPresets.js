@@ -22,7 +22,8 @@ const SchemaPresets = ( { clientId, blockName, schemaOrg } ) => {
 		} ),
 		[ clientId ]
 	);
-	const { updateBlockAttributes } = useDispatch( blockEditorStore );
+	const { updateBlockAttributes, __unstableMarkLastChangeAsPersistent } =
+		useDispatch( blockEditorStore );
 
 	const apply = ( blockSchemaOrg ) => {
 		const updates = {
@@ -31,6 +32,8 @@ const SchemaPresets = ( { clientId, blockName, schemaOrg } ) => {
 		};
 		const clientIds = Object.keys( updates );
 
+		// Close the previous undo level so each preset can be undone on its own.
+		__unstableMarkLastChangeAsPersistent();
 		updateBlockAttributes(
 			clientIds,
 			Object.fromEntries(

@@ -382,14 +382,6 @@ test.describe( 'FAQ and how-to presets', () => {
 		page,
 		schemaPanel,
 	} ) => {
-		const branch = await page.evaluate(
-			() => document.body.className.match( /\bbranch-(\d+-\d+)/ )?.[ 1 ]
-		);
-		test.fixme(
-			branch === '6-9',
-			'Plugin bug on WP 6.9: the How-to and FAQ presets merge into one undo level, so Undo reverts to the untyped accordion.'
-		);
-
 		const { howToButton, faqButton } = await setUpPlainAccordion(
 			editor,
 			schemaPanel
