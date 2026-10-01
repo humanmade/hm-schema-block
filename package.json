@@ -39,5 +39,13 @@
 		"@wordpress/hooks": "^4.56.0",
 		"@wordpress/i18n": "^6.29.0",
 		"@wordpress/icons": "^17.0.0"
+	},
+	"overrides": {
+		"express": {
+			"qs": "^6.16.0"
+		},
+		"markdownlint-cli": {
+			"js-yaml": "^5.4.2"
+		}
 	}
 }

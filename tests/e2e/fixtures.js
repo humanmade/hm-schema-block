@@ -10,10 +10,20 @@ const {
 
 const test = base.extend( {
 	// Opens a new post with the welcome guide and fullscreen mode off, once
-	// the editor canvas has loaded.
-	newPost: async ( { admin, editor, page }, use ) => {
+	// the editor canvas has loaded. If WordPress sends the browser to the
+	// login screen, logs in again, saves the new cookies and retries once.
+	newPost: async ( { admin, editor, page, requestUtils }, use ) => {
 		await use( async () => {
-			await admin.createNewPost();
+			try {
+				await admin.createNewPost();
+			} catch ( error ) {
+				if ( error.message !== 'Not logged in' ) {
+					throw error;
+				}
+				const { cookies } = await requestUtils.setupRest();
+				await page.context().addCookies( cookies );
+				await admin.createNewPost();
+			}
 			await editor.canvas.locator( 'body' ).waitFor();
 			await editor.setPreferences( 'core/edit-post', {
 				welcomeGuide: false,
