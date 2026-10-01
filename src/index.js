@@ -189,16 +189,16 @@ const withSchemaOrgControls = createHigherOrderComponent( ( BlockEdit ) => {
 													? {
 															type: null,
 															mappings: {},
-													  }
+														}
 													: {} ),
-										  }
+											}
 										: {
 												type: null,
 												mappings: {},
 												propertyName: null,
 												isProperty: false,
 												skipDefaults: true,
-										  }
+											}
 								)
 							}
 						/>

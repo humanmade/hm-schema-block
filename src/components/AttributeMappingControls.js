@@ -69,7 +69,7 @@ const AttributeMappingControls = ( {
 				? {
 						source: 'attribute',
 						attributeName: availableAttributes[ 0 ]?.value || '',
-				  }
+					}
 				: { source: 'content' },
 		};
 

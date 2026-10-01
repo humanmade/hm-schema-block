@@ -1,5 +1,6 @@
+/* eslint-disable react-hooks/rules-of-hooks -- `use` is Playwright's fixture callback, not React's. */
 /**
- * Project fixtures on top of @wordpress/e2e-test-utils-playwright.
+ * Project fixtures on top of `@wordpress/e2e-test-utils-playwright`.
  * Specs import { test, expect } from here instead of from the package.
  */
 const {
