@@ -14,6 +14,24 @@ const schemaOrg = ( overrides = {} ) => ( {
 	...overrides,
 } );
 
+// An Article group whose heading child supplies the headline.
+const articleWithHeading = ( headline ) => ( {
+	name: 'core/group',
+	attributes: { schemaOrg: schemaOrg( { type: 'Article' } ) },
+	innerBlocks: [
+		{
+			name: 'core/heading',
+			attributes: {
+				content: headline,
+				schemaOrg: schemaOrg( {
+					isProperty: true,
+					propertyName: 'headline',
+				} ),
+			},
+		},
+	],
+} );
+
 test.describe( 'Schema.org Block Mapping', () => {
 	test.beforeEach( async ( { newPost } ) => {
 		await newPost();
@@ -58,24 +76,31 @@ test.describe( 'Schema.org Block Mapping', () => {
 		).toBeVisible();
 	} );
 
-	// Plugin bug: smart defaults pick the first URL-typed parent property, so core/image maps to `url` (from Thing) instead of `image`.
-	test.fixme(
-		'should auto-apply smart defaults for image blocks',
-		async ( { insertBlock, schemaPanel } ) => {
-			const groupId = await insertBlock( { name: 'core/group' } );
-			await schemaPanel.setType( 'Article' );
+	test( 'should auto-apply smart defaults for image blocks', async ( {
+		insertBlock,
+		schemaPanel,
+		getSchemaTree,
+	} ) => {
+		const groupId = await insertBlock( { name: 'core/group' } );
+		await schemaPanel.setType( 'Article' );
 
-			await insertBlock( { name: 'core/image' }, groupId );
-			await schemaPanel.open();
+		const imageId = await insertBlock( { name: 'core/image' }, groupId );
+		await schemaPanel.open();
 
-			await expect(
-				schemaPanel.sidebar.getByLabel( 'Map as property of parent' )
-			).toBeChecked();
-			await expect(
-				schemaPanel.sidebar.getByLabel( 'Property Name' )
-			).toHaveValue( 'image' );
-		}
-	);
+		await expect(
+			schemaPanel.sidebar.getByLabel( 'Map as property of parent' )
+		).toBeChecked();
+		await expect(
+			schemaPanel.sidebar.getByLabel( 'Property Name' )
+		).toHaveValue( 'image' );
+
+		const image = await getSchemaTree( imageId );
+		expect( image.schemaOrg ).toMatchObject( {
+			type: 'ImageObject',
+			isProperty: true,
+			propertyName: 'image',
+		} );
+	} );
 
 	test( 'should allow adding attribute mappings on a typed block', async ( {
 		insertBlock,
@@ -143,19 +168,7 @@ test.describe( 'Schema.org Frontend Output', () => {
 		editor,
 		publishAndGetJsonLd,
 	} ) => {
-		await editor.insertBlock( {
-			name: 'core/group',
-			attributes: { schemaOrg: schemaOrg( { type: 'Article' } ) },
-		} );
-		await editor.insertBlock( {
-			name: 'core/heading',
-			attributes: {
-				content: 'Schema Test Heading',
-				schemaOrg: schemaOrg( {
-					mappings: { headline: { source: 'content' } },
-				} ),
-			},
-		} );
+		await editor.insertBlock( articleWithHeading( 'Schema Test Heading' ) );
 
 		const data = await publishAndGetJsonLd();
 
@@ -163,17 +176,16 @@ test.describe( 'Schema.org Frontend Output', () => {
 		expect( data[ '@graph' ] ).toBeInstanceOf( Array );
 		expect(
 			data[ '@graph' ].find( ( n ) => n[ '@type' ] === 'Article' )
-		).toBeDefined();
+		).toMatchObject( {
+			headline: 'Schema Test Heading',
+		} );
 	} );
 
 	test( 'should not produce duplicate graph entries', async ( {
 		editor,
 		publishAndGetJsonLd,
 	} ) => {
-		await editor.insertBlock( {
-			name: 'core/group',
-			attributes: { schemaOrg: schemaOrg( { type: 'Article' } ) },
-		} );
+		await editor.insertBlock( articleWithHeading( 'Only Once' ) );
 
 		const data = await publishAndGetJsonLd();
 		const articles = data[ '@graph' ].filter(

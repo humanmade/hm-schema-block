@@ -90,6 +90,26 @@ const test = base.extend( {
 		await use( panel );
 	},
 
+	// The schemaOrg attribute of a block and its descendants, as
+	// { clientId, name, schemaOrg, innerBlocks }. Pass no ID for the whole post.
+	getSchemaTree: async ( { page }, use ) => {
+		await use( ( rootClientId ) =>
+			page.evaluate( ( rootId ) => {
+				const { select } = window.wp.data;
+				const map = ( block ) => ( {
+					clientId: block.clientId,
+					name: block.name,
+					schemaOrg: block.attributes.schemaOrg,
+					innerBlocks: block.innerBlocks.map( map ),
+				} );
+				const store = select( 'core/block-editor' );
+				return rootId
+					? map( store.getBlock( rootId ) )
+					: store.getBlocks().map( map );
+			}, rootClientId )
+		);
+	},
+
 	// Publishes the current post, opens it on the front end and returns the
 	// parsed JSON-LD from <head>.
 	publishAndGetJsonLd: async ( { editor, page }, use ) => {
