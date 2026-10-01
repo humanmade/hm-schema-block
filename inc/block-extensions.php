@@ -477,7 +477,7 @@ function get_property_value( array $block, string $property, array $context = []
  * @return string|null
  */
 function get_block_text( array $block, array $context ) : ?string {
-	return DynamicValues\get_value( $block, $context ) ?? BlockValues\get_text( BlockValues\get_html( $block ) );
+	return DynamicValues\get_value( $block, $context ) ?? BlockValues\get_text( BlockValues\get_html( $block, $context ) );
 }
 
 /**
@@ -511,7 +511,7 @@ function resolve_mapping( array $block, array $mapping, array $context = [] ) {
 			return get_block_text( $block, $context );
 
 		case 'innerBlocks':
-			$html = array_map( 'SchemaOrgBlocks\\BlockValues\\get_html', BlockValues\get_inner_blocks( $block, $context ) );
+			$html = array_map( static fn ( $child ) => BlockValues\get_html( $child, $context ), BlockValues\get_inner_blocks( $block, $context ) );
 			return BlockValues\get_text( implode( "\n", $html ) );
 
 		case 'post':

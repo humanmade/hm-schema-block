@@ -187,6 +187,56 @@ test.describe( 'Template schema that contains the page', () => {
 		).toHaveLength( 1 );
 	} );
 
+	test( 'a synced pattern that shows post content does not loop', async ( {
+		page,
+		requestUtils,
+	} ) => {
+		const pattern = await requestUtils.rest( {
+			method: 'POST',
+			path: '/wp/v2/blocks',
+			data: {
+				title: 'Post content inside a pattern',
+				status: 'publish',
+				content: '<!-- wp:post-content /-->',
+			},
+		} );
+		const looping = await requestUtils.createPost( {
+			title: 'Looping post',
+			content: `${ readPattern( 'faq' ) }\n<!-- wp:block {"ref":${ pattern.id }} /-->`,
+			status: 'publish',
+		} );
+
+		try {
+			await requestUtils.rest( {
+				method: 'POST',
+				path: TEMPLATE,
+				data: { content: singleTemplate( article() ) },
+			} );
+
+			const response = await page.goto( looping.link );
+			expect( response.status() ).toBe( 200 );
+
+			const graph = graphOf( await getJsonLdAt( page, looping.link ) );
+			const webPageNode = graph.find(
+				( node ) => node[ '@type' ] === 'WebPage'
+			);
+			expect( webPageNode.mainEntity.hasPart[ '@type' ] ).toBe(
+				'FAQPage'
+			);
+		} finally {
+			for ( const route of [
+				`/wp/v2/posts/${ looping.id }`,
+				`/wp/v2/blocks/${ pattern.id }`,
+			] ) {
+				await requestUtils.rest( {
+					method: 'DELETE',
+					path: route,
+					params: { force: true },
+				} );
+			}
+		}
+	} );
+
 	test( 'without a typed template the post FAQ stays a top-level node', async ( {
 		page,
 	} ) => {
