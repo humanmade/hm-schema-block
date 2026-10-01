@@ -134,6 +134,23 @@ const test = base.extend( {
 		} );
 	},
 
+	// Publishes a post with the given block markup over REST, opens it on the
+	// front end and returns the parsed JSON-LD from <head>, or null.
+	publishMarkupAndGetJsonLd: async (
+		{ requestUtils, page, getJsonLd },
+		use
+	) => {
+		await use( async ( content ) => {
+			const post = await requestUtils.createPost( {
+				title: 'Schema test',
+				content,
+				status: 'publish',
+			} );
+			await page.goto( `/?p=${ post.id }` );
+			return getJsonLd();
+		} );
+	},
+
 	// Publishes the current post, opens it on the front end and returns the
 	// parsed JSON-LD from <head>.
 	publishAndGetJsonLd: async ( { page, publishAndView }, use ) => {
