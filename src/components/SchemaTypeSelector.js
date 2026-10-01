@@ -101,6 +101,7 @@ const SchemaTypeSelector = ( {
 			{ parentSchemaType && availableProperties.length > 0 && (
 				<>
 					<ToggleControl
+						__nextHasNoMarginBottom
 						label={ __(
 							'Map as property of parent',
 							'schema-org-blocks'
@@ -116,6 +117,8 @@ const SchemaTypeSelector = ( {
 					{ isProperty && (
 						<>
 							<SelectControl
+								__next40pxDefaultSize
+								__nextHasNoMarginBottom
 								label={ __(
 									'Property Name',
 									'schema-org-blocks'
@@ -154,6 +157,8 @@ const SchemaTypeSelector = ( {
 
 			{ ( ! isProperty || availableTypes.length > 0 ) && (
 				<SelectControl
+					__next40pxDefaultSize
+					__nextHasNoMarginBottom
 					label={
 						isProperty
 							? __( 'Value Type', 'schema-org-blocks' )

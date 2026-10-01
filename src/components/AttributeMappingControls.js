@@ -129,6 +129,8 @@ const AttributeMappingControls = ( {
 					className="schema-org-blocks-attribute-mapping__row"
 				>
 					<SelectControl
+						__next40pxDefaultSize
+						__nextHasNoMarginBottom
 						label={ __( 'Schema Property', 'schema-org-blocks' ) }
 						value={ property }
 						options={ [
@@ -150,6 +152,8 @@ const AttributeMappingControls = ( {
 					/>
 
 					<SelectControl
+						__next40pxDefaultSize
+						__nextHasNoMarginBottom
 						label={ __( 'Source', 'schema-org-blocks' ) }
 						value={ getSourceKey( mapping ) }
 						options={ SOURCES }
@@ -160,6 +164,8 @@ const AttributeMappingControls = ( {
 
 					{ mapping.source === 'attribute' && (
 						<SelectControl
+							__next40pxDefaultSize
+							__nextHasNoMarginBottom
 							label={ __( 'Attribute', 'schema-org-blocks' ) }
 							value={ mapping.attributeName || '' }
 							options={ [
