@@ -74,3 +74,17 @@
 		background: #949494;
 	}
 }
+
+.schema-org-blocks-presets {
+	margin-bottom: 16px;
+
+	&__buttons {
+		display: flex;
+		flex-wrap: wrap;
+		gap: 8px;
+	}
+
+	&__reapply {
+		margin-top: 8px;
+	}
+}

@@ -17,8 +17,10 @@ import { __ } from '@wordpress/i18n';
 
 import SchemaTypeSelector from './components/SchemaTypeSelector';
 import AttributeMappingControls from './components/AttributeMappingControls';
+import SchemaPresets from './components/SchemaPresets';
 import { getSmartDefaults, shouldApplyDefaults } from './utils/smart-defaults';
 
+import './variations';
 import './editor.scss';
 
 /**
@@ -155,6 +157,11 @@ const withSchemaOrgControls = createHigherOrderComponent( ( BlockEdit ) => {
 						) }
 						initialOpen={ false }
 					>
+						<SchemaPresets
+							clientId={ clientId }
+							blockName={ name }
+							schemaOrg={ schemaOrg }
+						/>
 						<SchemaTypeSelector
 							value={ schemaOrg.type }
 							parentSchemaType={ parentSchemaContext?.type }
