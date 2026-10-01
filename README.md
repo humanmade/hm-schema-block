@@ -366,8 +366,8 @@ Blocks hidden with the block visibility setting, and password-protected posts an
 
 ## Requirements
 
-- WordPress 6.9+
-- PHP 8.0+
+- WordPress 6.9+ (tested up to 7.1)
+- PHP 8.0+ (tested up to 8.5)
 - Node.js 22.22+ or 24.15+ (for development)
 
 ## License
