@@ -41,8 +41,8 @@ function get_attribute( array $block, string $name ) {
 		$value ??= $definition['default'] ?? null;
 	}
 
-	if ( is_string( $value ) && str_contains( $value, '<' ) ) {
-		return get_text( $value );
+	if ( is_string( $value ) ) {
+		return str_contains( $value, '<' ) ? get_text( $value ) : html_entity_decode( $value, ENT_QUOTES | ENT_HTML5, 'UTF-8' );
 	}
 
 	return is_scalar( $value ) ? $value : null;
@@ -52,7 +52,8 @@ function get_attribute( array $block, string $name ) {
  * Read an attribute value from markup using its block.json source definition.
  *
  * Supports the `attribute`, `html`, `rich-text` and `text` sources. Selectors are matched on
- * their last compound part (tag name and classes), which covers core block definitions.
+ * their last compound part (tag name and classes), plus a parent tag for `parent > child`.
+ * Selectors using attribute or pseudo-class syntax are not supported and give null.
  *
  * @param string               $html       Block markup.
  * @param array<string, mixed> $definition Attribute definition.
@@ -70,6 +71,10 @@ function get_sourced_value( string $html, array $definition ) : ?string {
 		return get_text( $html );
 	}
 
+	if ( preg_match( '/[\[:]/', $selector ) ) {
+		return null;
+	}
+
 	$processor = WP_HTML_Processor::create_fragment( $html );
 	if ( ! $processor ) {
 		return null;
@@ -85,7 +90,9 @@ function get_sourced_value( string $html, array $definition ) : ?string {
 			return is_string( $value ) ? $value : null;
 		}
 
-		return read_text( $processor, $processor->get_current_depth() );
+		$text = read_text( $processor, $processor->get_current_depth() );
+
+		return null === $processor->get_last_error() ? $text : null;
 	}
 
 	return null;
@@ -94,7 +101,8 @@ function get_sourced_value( string $html, array $definition ) : ?string {
 /**
  * Check whether the element at the processor's position matches a selector list.
  *
- * Only the last compound selector of each list item is checked: its tag name and classes.
+ * Only the last compound selector of each list item is checked (tag name and classes), and
+ * for a `parent > child` item, the parent's tag name.
  *
  * @param WP_HTML_Processor $processor HTML processor positioned on a tag.
  * @param string            $selector  CSS selector list, e.g. "h1,h2" or "figure img".
@@ -102,8 +110,17 @@ function get_sourced_value( string $html, array $definition ) : ?string {
  */
 function matches_selector( WP_HTML_Processor $processor, string $selector ) : bool {
 	foreach ( explode( ',', $selector ) as $item ) {
-		$parts    = preg_split( '/[\s>+~]+/', trim( $item ) );
-		$compound = end( $parts );
+		$parts    = preg_split( '/\s*([\s>+~])\s*/', trim( $item ), -1, PREG_SPLIT_DELIM_CAPTURE );
+		$compound = (string) array_pop( $parts );
+		$combinator = (string) array_pop( $parts );
+		$parent     = (string) array_pop( $parts );
+
+		if ( '>' === $combinator && preg_match( '/^[a-z][a-z0-9-]*$/i', $parent ) ) {
+			$breadcrumbs = $processor->get_breadcrumbs();
+			if ( strtoupper( $parent ) !== ( $breadcrumbs[ count( $breadcrumbs ) - 2 ] ?? '' ) ) {
+				continue;
+			}
+		}
 
 		if ( ! preg_match( '/^([a-z][a-z0-9-]*)?((?:\.[\w-]+)*)/i', $compound, $match ) || '' === $match[0] ) {
 			continue;
@@ -185,7 +202,7 @@ function read_text( WP_HTML_Processor $processor, int $min_depth ) : string {
 			continue;
 		}
 
-		if ( null === $hidden_depth && ! $processor->is_tag_closer() && 'true' === $processor->get_attribute( 'aria-hidden' ) ) {
+		if ( null === $hidden_depth && ! $processor->is_tag_closer() && $processor->expects_closer() && 'true' === $processor->get_attribute( 'aria-hidden' ) ) {
 			$hidden_depth = $depth;
 		}
 
