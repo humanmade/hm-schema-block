@@ -14,6 +14,7 @@
 		"plugin-zip": "wp-scripts plugin-zip",
 		"playground:start": "npx @wp-playground/cli server --blueprint=blueprint.json --auto-mount",
 		"test:e2e": "playwright test",
+		"patterns:generate": "SCHEMA_GENERATE_PATTERNS=1 playwright test generate-patterns",
 		"test:e2e:debug": "playwright test --debug",
 		"test:e2e:watch": "playwright test --ui"
 	},
@@ -26,6 +27,7 @@
 	"files": [
 		"build/**",
 		"inc/**",
+		"patterns/**",
 		"schema-org-blocks.php",
 		"README.md"
 	],

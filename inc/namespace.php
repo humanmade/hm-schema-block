@@ -15,6 +15,7 @@ namespace SchemaOrgBlocks;
  */
 function bootstrap() : void {
 	BlockExtensions\register_block_attribute();
+	Patterns\bootstrap();
 
 	add_action( 'init', __NAMESPACE__ . '\\SchemaOutput\\init' );
 	add_action( 'enqueue_block_editor_assets', __NAMESPACE__ . '\\enqueue_block_editor_assets' );
