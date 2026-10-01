@@ -20,6 +20,21 @@ function resolvePort() {
 }
 
 /**
+ * Random values for the wp-config.php auth keys and salts.
+ *
+ * @return {Object} Constant name => value.
+ */
+function generateSalts() {
+	const names = [ 'AUTH', 'SECURE_AUTH', 'LOGGED_IN', 'NONCE' ];
+	return Object.fromEntries(
+		names.flatMap( ( name ) => [
+			[ `${ name }_KEY`, crypto.randomBytes( 32 ).toString( 'hex' ) ],
+			[ `${ name }_SALT`, crypto.randomBytes( 32 ).toString( 'hex' ) ],
+		] )
+	);
+}
+
+/**
  * Boots one Playground instance for the whole run, unless WP_BASE_URL is
  * already set. Reads ./blueprint.json (or WP_BLUEPRINT_PATH) and auto-mounts
  * the project directory, which also activates the plugin.
@@ -27,6 +42,9 @@ function resolvePort() {
  * WP_PLAYGROUND_PHP / WP_PLAYGROUND_WP override the blueprint's
  * preferredVersions, because the CLI lets the blueprint win over its own
  * `php` / `wp` arguments.
+ *
+ * Drops the blueprint's `login` step, since setUpAdmin() logs in, and writes
+ * random salts to wp-config.php.
  */
 async function startPlayground() {
 	const { runCLI } = require( '@wp-playground/cli' );
@@ -39,6 +57,12 @@ async function startPlayground() {
 		process.env.WP_PLAYGROUND_PHP || blueprint.preferredVersions?.php;
 	const wp = process.env.WP_PLAYGROUND_WP || blueprint.preferredVersions?.wp;
 	blueprint.preferredVersions = { ...blueprint.preferredVersions, php, wp };
+	blueprint.steps = [
+		{ step: 'defineWpConfigConsts', consts: generateSalts() },
+		...( blueprint.steps || [] ).filter(
+			( step ) => step.step !== 'login'
+		),
+	];
 
 	const options = {
 		command: 'server',
