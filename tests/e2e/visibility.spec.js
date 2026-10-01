@@ -73,6 +73,19 @@ test.describe( 'Schema output for hidden and protected content', () => {
 		] );
 	} );
 
+	test( 'a hidden copy does not remove the same visible entity', async ( {
+		publishMarkupAndGetJsonLd,
+	} ) => {
+		const data = await publishMarkupAndGetJsonLd(
+			person( property( 'name', 'Twin' ) ) +
+				group( hidden, person( property( 'name', 'Twin' ) ) )
+		);
+
+		expect( ofType( data, 'Person' ) ).toEqual( [
+			{ '@type': 'Person', name: 'Twin' },
+		] );
+	} );
+
 	test( 'a typed group inside a hidden plain group is left out', async ( {
 		publishMarkupAndGetJsonLd,
 	} ) => {

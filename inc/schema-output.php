@@ -32,12 +32,15 @@ function init() : void {
 /**
  * Get or update the collection state for the current request.
  *
- * @param array<string, mixed>|null $update Keys to replace: `objects` (keyed by hash) and `collecting`.
- * @return array{objects: array<string, array<string, mixed>>, collecting: bool}
+ * Objects are keyed by a hash of their JSON, with a count of how many blocks produced each one.
+ *
+ * @param array<string, mixed>|null $update Keys to replace: `objects`, `counts` and `collecting`.
+ * @return array{objects: array<string, array<string, mixed>>, counts: array<string, int>, collecting: bool}
  */
 function state( ?array $update = null ) : array {
 	static $state = [
 		'objects'    => [],
+		'counts'     => [],
 		'collecting' => false,
 	];
 
@@ -49,33 +52,53 @@ function state( ?array $update = null ) : array {
 }
 
 /**
- * Add schema objects to the collection, skipping exact duplicates.
+ * Add schema objects to the collection. Exact duplicates are output once.
  *
  * @param array<int, array<string, mixed>> $objects Schema objects.
  */
 function add_objects( array $objects ) : void {
-	$collected = state()['objects'];
+	[ 'objects' => $collected, 'counts' => $counts ] = state();
 
 	foreach ( $objects as $object ) {
-		$collected[ md5( (string) wp_json_encode( $object ) ) ] = $object;
+		$hash               = md5( (string) wp_json_encode( $object ) );
+		$collected[ $hash ] = $object;
+		$counts[ $hash ]    = ( $counts[ $hash ] ?? 0 ) + 1;
 	}
 
-	state( [ 'objects' => $collected ] );
+	state(
+		[
+			'objects' => $collected,
+			'counts'  => $counts,
+		]
+	);
 }
 
 /**
- * Remove schema objects from the collection.
+ * Remove one occurrence of each schema object, keeping objects other blocks also produced.
  *
  * @param array<int, array<string, mixed>> $objects Schema objects.
  */
 function remove_objects( array $objects ) : void {
-	$collected = state()['objects'];
+	[ 'objects' => $collected, 'counts' => $counts ] = state();
 
 	foreach ( $objects as $object ) {
-		unset( $collected[ md5( (string) wp_json_encode( $object ) ) ] );
+		$hash = md5( (string) wp_json_encode( $object ) );
+
+		if ( ! isset( $counts[ $hash ] ) ) {
+			continue;
+		}
+
+		if ( --$counts[ $hash ] < 1 ) {
+			unset( $collected[ $hash ], $counts[ $hash ] );
+		}
 	}
 
-	state( [ 'objects' => $collected ] );
+	state(
+		[
+			'objects' => $collected,
+			'counts'  => $counts,
+		]
+	);
 }
 
 /**
@@ -88,6 +111,7 @@ function start_collecting( $template ) {
 	state(
 		[
 			'objects'    => [],
+			'counts'     => [],
 			'collecting' => false,
 		]
 	);
