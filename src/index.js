@@ -19,6 +19,8 @@ import SchemaTypeSelector from './components/SchemaTypeSelector';
 import AttributeMappingControls from './components/AttributeMappingControls';
 import SchemaPresets from './components/SchemaPresets';
 import {
+	findParentType,
+	getPropertyCandidates,
 	getSmartDefaults,
 	propertyAcceptsType,
 	shouldApplyDefaults,
@@ -53,39 +55,32 @@ addFilter(
 );
 
 /**
- * Add block context support.
- */
-addFilter(
-	'blocks.registerBlockType',
-	'schema-org-blocks/add-context',
-	( settings ) => {
-		// Provide context.
-		if ( ! settings.providesContext ) {
-			settings.providesContext = {};
-		}
-		settings.providesContext[ 'schemaOrg/type' ] = 'schemaOrg';
-
-		// Use context.
-		if ( ! settings.usesContext ) {
-			settings.usesContext = [];
-		}
-		if ( ! settings.usesContext.includes( 'schemaOrg/type' ) ) {
-			settings.usesContext.push( 'schemaOrg/type' );
-		}
-
-		return settings;
-	}
-);
-
-/**
  * Add Schema.org controls to block inspector.
  */
 const withSchemaOrgControls = createHigherOrderComponent( ( BlockEdit ) => {
 	return ( props ) => {
-		const { attributes, setAttributes, name, context, clientId } = props;
+		const { attributes, setAttributes, name, clientId } = props;
 		const { schemaOrg = {} } = attributes;
-		const parentSchemaContext = context?.[ 'schemaOrg/type' ];
-		const parentType = parentSchemaContext?.type;
+
+		// The typed ancestor this block's properties belong to, through untyped containers.
+		const { parentType, parentClientId } = useSelect(
+			( select ) => {
+				const { getBlockParents, getBlock } =
+					select( blockEditorStore );
+				const ancestorIds = getBlockParents( clientId, true );
+				const type = findParentType( ancestorIds.map( getBlock ) );
+				return {
+					parentType: type,
+					parentClientId: type
+						? ancestorIds.find(
+								( id ) =>
+									getBlock( id )?.attributes?.schemaOrg?.type
+							)
+						: null,
+				};
+			},
+			[ clientId ]
+		);
 
 		// Properties already claimed by direct child blocks via isProperty, so
 		// AttributeMappingControls can exclude them from the parent's picker.
@@ -95,8 +90,9 @@ const withSchemaOrgControls = createHigherOrderComponent( ( BlockEdit ) => {
 				if ( ! schemaOrg.type ) {
 					return '';
 				}
-				return select( blockEditorStore )
-					.getBlocks( clientId )
+				return getPropertyCandidates(
+					select( blockEditorStore ).getBlocks( clientId )
+				)
 					.filter( ( b ) => b.attributes?.schemaOrg?.isProperty )
 					.map( ( b ) => b.attributes.schemaOrg.propertyName )
 					.filter( Boolean )
@@ -111,19 +107,18 @@ const withSchemaOrgControls = createHigherOrderComponent( ( BlockEdit ) => {
 				if ( ! parentType ) {
 					return false;
 				}
-				const { getBlock, getBlockRootClientId, getBlocks } =
-					select( blockEditorStore );
+				const { getBlock, getBlocks } = select( blockEditorStore );
 				const block = getBlock( clientId );
 				return (
 					!! block &&
 					shouldApplyDefaults(
 						block,
 						parentType,
-						getBlocks( getBlockRootClientId( clientId ) )
+						getPropertyCandidates( getBlocks( parentClientId ) )
 					)
 				);
 			},
-			[ parentType, clientId ]
+			[ parentType, parentClientId, clientId ]
 		);
 
 		const { __unstableMarkNextChangeAsNotPersistent } =
@@ -168,7 +163,7 @@ const withSchemaOrgControls = createHigherOrderComponent( ( BlockEdit ) => {
 						/>
 						<SchemaTypeSelector
 							value={ schemaOrg.type }
-							parentSchemaType={ parentSchemaContext?.type }
+							parentSchemaType={ parentType }
 							onChange={ ( type ) => updateSchemaOrg( { type } ) }
 							isProperty={ schemaOrg.isProperty }
 							propertyName={ schemaOrg.propertyName }
