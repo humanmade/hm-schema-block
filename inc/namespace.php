@@ -9,8 +9,13 @@ namespace SchemaOrgBlocks;
 
 /**
  * Bootstrap the plugin.
+ *
+ * Block type filters are added straight away: core blocks register on `init` before
+ * callbacks added by plugins at the same priority run.
  */
 function bootstrap() : void {
+	BlockExtensions\register_block_context();
+
 	add_action( 'init', __NAMESPACE__ . '\\init' );
 	add_action( 'enqueue_block_editor_assets', __NAMESPACE__ . '\\enqueue_block_editor_assets' );
 }
@@ -19,9 +24,6 @@ function bootstrap() : void {
  * Initialize the plugin.
  */
 function init() : void {
-	// Register block attributes and render_block extraction hook.
-	BlockExtensions\register_block_context();
-
 	// Register output hooks (wp_head JSON-LD or Yoast filter).
 	SchemaOutput\init();
 
