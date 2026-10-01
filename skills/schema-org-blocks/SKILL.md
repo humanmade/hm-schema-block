@@ -31,7 +31,9 @@ The plugin turns a `schemaOrg` attribute on any block into JSON-LD in `wp_head` 
 3. A property block without a type gives its text, or the value of a dynamic block (post title, post date, author name, featured image, excerpt, terms, site title, tagline, logo). With a type, it becomes a nested object built the same way.
 4. Several values for one property become an array. Plain text for an object-only property is wrapped, e.g. `acceptedAnswer` → `{"@type": "Answer", "text": …}` and `author` → `Person`.
 5. A typed `core/post-template` gives one entity per post in its query, each with the post's `url`. As `itemListElement` of an `ItemList`, items become `ListItem`s with a `position`. As `blogPost` of a `Blog`, they stay `BlogPosting`s.
-6. Hidden blocks, password-protected content, excerpts, and other posts' full content inside query loops are left out.
+6. An entity inside another entity's blocks is nested under the outer one's `contains` property: `hasPart` by default for creative works, or set `"contains": "mainEntity"` (or `""` to turn it off). `core/post-content` counts as the post's blocks, so a typed group around post content in a template contains the post's FAQ or how-to.
+7. References to `#website` or `#organization` that no block defines are filled from the site settings (not with Yoast active, which outputs them itself).
+8. Hidden blocks, password-protected content, excerpts, and other posts' full content inside query loops are left out.
 
 ## Recipes
 
@@ -46,6 +48,8 @@ Working examples live in `patterns/` in the plugin and are registered as block p
 | Blog or archive listing | `blog-list.html` or `item-list.html` | `Blog` or `ItemList` on `core/query` |
 
 To build a linked site graph in a block theme: put the organization pattern's group in the header template part, the article header in the single template, and a list pattern in home, index and archive templates.
+
+To make the single template describe the whole page, type its main group with the "Web page" Quick setup (`WebPage`, `@id` and `url` from the post, `isPartOf` the site, `contains: mainEntity`) and wrap the post title and `core/post-content` in a group typed `Article`. The output is WebPage > Article > the entities in the post, plus WebSite and Organization nodes.
 
 ## Editing rules
 

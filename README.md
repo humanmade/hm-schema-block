@@ -248,6 +248,19 @@ Another entity links to it with a `reference` mapping, or **Link to site Organiz
 }
 ```
 
+### Page graph
+
+Template entities contain the entities on the page. An entity inside another entity's blocks is nested under the outer one's `contains` property, `hasPart` by default for creative works. `core/post-content` resolves to the post's blocks, so a typed group around post content in the single template contains the FAQ or how-to in each post. Set `"contains": ""` on a block to keep inner entities as separate nodes.
+
+The "Web page" Quick setup on a group types it `WebPage` with `@id` and `url` from the permalink (the same `@id` Yoast gives its WebPage), `name` from the post title, `isPartOf` the site, and `contains: mainEntity`. Use it on the template's main group, with an `Article` group inside around the post title and post content:
+
+```json
+{ "@type": "WebPage", "@id": "https://example.com/bread/", "isPartOf": { "@id": "https://example.com/#website" },
+  "mainEntity": { "@type": "Article", "headline": "Bread", "hasPart": { "@type": "FAQPage", "mainEntity": [ … ] } } }
+```
+
+When the graph refers to `#website` or `#organization` and no block defines them, the plugin adds WebSite and Organization nodes built from the site settings. With Yoast SEO active it leaves that to Yoast.
+
 ### Patterns
 
 The plugin adds a **Schema.org** block pattern category with seven patterns:
