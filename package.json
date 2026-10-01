@@ -2,6 +2,9 @@
 	"name": "schema-org-blocks",
 	"version": "1.0.0",
 	"description": "Extend all blocks with schema.org type mapping and structured data output",
+	"engines": {
+		"node": "^22.22.2 || >=24.15.0"
+	},
 	"scripts": {
 		"build": "wp-scripts build",
 		"start": "wp-scripts start",
