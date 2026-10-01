@@ -268,8 +268,9 @@ function output_json_ld() : void {
 		'@graph'   => $graph,
 	];
 
-	printf(
-		'<script type="application/ld+json">%s</script>' . "\n",
-		wp_json_encode( $schema_output, JSON_UNESCAPED_SLASHES | JSON_PRETTY_PRINT )
-	);
+	$json = wp_json_encode( $schema_output, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE | JSON_HEX_TAG | JSON_HEX_AMP );
+
+	if ( $json ) {
+		printf( "<script type=\"application/ld+json\">%s</script>\n", $json ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- JSON with < > & hex-escaped.
+	}
 }
