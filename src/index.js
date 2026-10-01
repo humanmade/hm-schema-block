@@ -22,6 +22,7 @@ import {
 	findParentType,
 	getPropertyCandidates,
 	getSmartDefaults,
+	isTypeOrSubtype,
 	propertyAcceptsType,
 	shouldApplyDefaults,
 } from './utils/smart-defaults';
@@ -91,7 +92,8 @@ const withSchemaOrgControls = createHigherOrderComponent( ( BlockEdit ) => {
 					return '';
 				}
 				return getPropertyCandidates(
-					select( blockEditorStore ).getBlocks( clientId )
+					select( blockEditorStore ).getBlocks( clientId ),
+					schemaOrg.type
 				)
 					.filter( ( b ) => b.attributes?.schemaOrg?.isProperty )
 					.map( ( b ) => b.attributes.schemaOrg.propertyName )
@@ -114,7 +116,10 @@ const withSchemaOrgControls = createHigherOrderComponent( ( BlockEdit ) => {
 					shouldApplyDefaults(
 						block,
 						parentType,
-						getPropertyCandidates( getBlocks( parentClientId ) )
+						getPropertyCandidates(
+							getBlocks( parentClientId ),
+							parentType
+						)
 					)
 				);
 			},
@@ -164,7 +169,20 @@ const withSchemaOrgControls = createHigherOrderComponent( ( BlockEdit ) => {
 						<SchemaTypeSelector
 							value={ schemaOrg.type }
 							parentSchemaType={ parentType }
-							onChange={ ( type ) => updateSchemaOrg( { type } ) }
+							onChange={ ( type ) =>
+								updateSchemaOrg( {
+									type,
+									// A site-wide id only stays with the same type or a subtype.
+									...( schemaOrg.id &&
+									! (
+										type &&
+										schemaOrg.type &&
+										isTypeOrSubtype( type, schemaOrg.type )
+									)
+										? { id: undefined }
+										: {} ),
+								} )
+							}
 							isProperty={ schemaOrg.isProperty }
 							propertyName={ schemaOrg.propertyName }
 							onPropertyChange={ ( propertyName, isProperty ) =>

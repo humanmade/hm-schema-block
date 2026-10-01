@@ -212,20 +212,28 @@ export function getPresetsFor( blockName ) {
 }
 
 /**
- * Whether a block's inner blocks are skipped when looking for property blocks: a block with a
- * type, a property block, a post template, whose content repeats per post, or a block whose
- * smart default makes it a nested entity.
+ * Whether a block's inner blocks are skipped when looking for property blocks of a type.
  *
- * @param {Object} block Block: `{ name, attributes }`.
+ * The walk stops at a block with a type, a property block, a post template (its content
+ * repeats per post), and a block whose smart default under that type makes it a nested entity:
+ * its inner blocks belong to it, not to the outer type.
+ *
+ * @param {Object}      block      Block: `{ name, attributes }`.
+ * @param {string|null} parentType Type the walk is looking for properties of.
  * @return {boolean} Whether the walk stops at this block.
  */
-function stopsWalk( block ) {
+function stopsWalk( block, parentType ) {
 	const schemaOrg = block.attributes?.schemaOrg || {};
-	return Boolean(
+	if (
 		schemaOrg.type ||
 		schemaOrg.isProperty ||
-		block.name === 'core/post-template' ||
-		RULES[ block.name ]?.nested
+		block.name === 'core/post-template'
+	) {
+		return true;
+	}
+	return Boolean(
+		RULES[ block.name ]?.nested &&
+		getSmartDefaults( block.name, parentType, block.attributes )
 	);
 }
 
@@ -237,30 +245,34 @@ function stopsWalk( block ) {
  * @return {string|null} Schema type, or null.
  */
 export function findParentType( ancestors ) {
-	for ( const ancestor of ancestors ) {
-		if ( ancestor.attributes?.schemaOrg?.type ) {
-			return ancestor.attributes.schemaOrg.type;
-		}
-		if ( stopsWalk( ancestor ) ) {
-			return null;
-		}
+	const [ ancestor, ...rest ] = ancestors;
+
+	if ( ! ancestor ) {
+		return null;
 	}
-	return null;
+
+	if ( ancestor.attributes?.schemaOrg?.type ) {
+		return ancestor.attributes.schemaOrg.type;
+	}
+
+	const typeAbove = findParentType( rest );
+	return stopsWalk( ancestor, typeAbove ) ? null : typeAbove;
 }
 
 /**
  * List the blocks that can be properties of a typed block, in document order: its inner
  * blocks and, through untyped containers, theirs.
  *
- * @param {Object[]} blocks Inner blocks of the typed block, from getBlocks().
+ * @param {Object[]} blocks     Inner blocks of the typed block, from getBlocks().
+ * @param {string}   parentType The typed block's schema type.
  * @return {Object[]} Blocks.
  */
-export function getPropertyCandidates( blocks ) {
+export function getPropertyCandidates( blocks, parentType ) {
 	return blocks.flatMap( ( block ) => [
 		block,
-		...( stopsWalk( block )
+		...( stopsWalk( block, parentType )
 			? []
-			: getPropertyCandidates( block.innerBlocks || [] ) ),
+			: getPropertyCandidates( block.innerBlocks || [], parentType ) ),
 	] );
 }
 
@@ -428,7 +440,7 @@ function isRepeatable( blockName ) {
 export function getTreeDefaults( blocks, parentType ) {
 	const updates = {};
 	const claimed = new Set(
-		getPropertyCandidates( blocks )
+		getPropertyCandidates( blocks, parentType )
 			.filter(
 				( block ) =>
 					! getSmartDefaults(
@@ -460,7 +472,7 @@ export function getTreeDefaults( blocks, parentType ) {
 				if ( isStale ) {
 					updates[ block.clientId ] = { ...EMPTY_CONFIG };
 				}
-				if ( isStale || ! stopsWalk( block ) ) {
+				if ( isStale || ! stopsWalk( block, parentType ) ) {
 					visit( block.innerBlocks || [] );
 				}
 				return;
@@ -509,6 +521,29 @@ export function propertyAcceptsType( parentType, propertyName, type ) {
 		current = schemaTypes[ current ]?.parent
 	) {
 		if ( accepted.includes( current ) ) {
+			return true;
+		}
+	}
+
+	return false;
+}
+
+/**
+ * Whether a schema type is the same as, or a subtype of, another.
+ *
+ * @param {string} type     Schema type.
+ * @param {string} ancestor Possible ancestor type.
+ * @return {boolean} Whether `type` is `ancestor` or descends from it.
+ */
+export function isTypeOrSubtype( type, ancestor ) {
+	const { schemaTypes = {} } = window.schemaOrgBlocksData || {};
+
+	for (
+		let current = type;
+		current;
+		current = schemaTypes[ current ]?.parent
+	) {
+		if ( current === ancestor ) {
 			return true;
 		}
 	}

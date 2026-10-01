@@ -536,6 +536,67 @@ test.describe( 'Smart defaults for FSE blocks', () => {
 			.toEqual( property( 'headline' ) );
 	} );
 
+	test( 'a heading in a details block inside an Article group becomes the headline', async ( {
+		insertBlock,
+		getSchemaTree,
+	} ) => {
+		const groupId = await insertBlock( {
+			name: 'core/group',
+			attributes: {
+				schemaOrg: {
+					type: 'Article',
+					mappings: {},
+					isProperty: false,
+					propertyName: null,
+				},
+			},
+			innerBlocks: [
+				{ name: 'core/details', attributes: { summary: 'More' } },
+			],
+		} );
+		const group = await getSchemaTree( groupId );
+		const detailsId = group.innerBlocks[ 0 ].clientId;
+
+		const headingId = await insertBlock(
+			{ name: 'core/heading', attributes: { content: 'Hello' } },
+			detailsId
+		);
+
+		await expect
+			.poll( async () => ( await getSchemaTree( headingId ) ).schemaOrg )
+			.toEqual( property( 'headline' ) );
+	} );
+
+	test( 'changing the type keeps the Organization id only for subtypes', async ( {
+		editor,
+		schemaPanel,
+		getSchemaTree,
+	} ) => {
+		await editor.insertBlock( {
+			name: 'core/group',
+			innerBlocks: [ { name: 'core/site-title' } ],
+		} );
+		await editor.selectBlocks(
+			editor.canvas.locator( '[data-type="core/group"]' ).first()
+		);
+		await schemaPanel.open();
+		await schemaPanel.sidebar
+			.getByRole( 'button', { name: 'Organization', exact: true } )
+			.click();
+
+		const typeSelect = schemaPanel.sidebar.getByLabel( 'Schema Type' );
+		await typeSelect.selectOption( 'LocalBusiness' );
+		expect( ( await getSchemaTree() )[ 0 ].schemaOrg ).toMatchObject( {
+			type: 'LocalBusiness',
+			id: 'organization',
+		} );
+
+		await typeSelect.selectOption( 'Article' );
+		const [ group ] = await getSchemaTree();
+		expect( group.schemaOrg.type ).toBe( 'Article' );
+		expect( group.schemaOrg.id ).toBeUndefined();
+	} );
+
 	test( 'Quick setup Organization maps site title and logo', async ( {
 		editor,
 		schemaPanel,
