@@ -490,6 +490,141 @@ test.describe( 'FAQ and how-to presets', () => {
 		);
 	} );
 
+	test( 'an accordion panel with Value Type Answer outputs its text as the answer', async ( {
+		editor,
+		page,
+		schemaPanel,
+		publishAndGetJsonLd,
+	} ) => {
+		const { option } = await insertFromInserter( page, 'FAQ', 'FAQ' );
+		await option.click();
+		await fillAccordionItem(
+			editor,
+			page,
+			0,
+			'Does it rain?',
+			'Mostly in spring.'
+		);
+
+		await editor.selectBlocks(
+			editor.canvas
+				.locator( '[data-type="core/accordion-panel"]' )
+				.first()
+		);
+		await schemaPanel.open();
+		await schemaPanel.sidebar
+			.getByLabel( 'Value Type' )
+			.selectOption( 'Answer' );
+
+		const [ accordion ] = await editor.getBlocks();
+		const [ , , [ , panel ] ] = schemaTree( accordion.innerBlocks )[ 0 ];
+		expect( panel[ 1 ] ).toEqual( {
+			...accordionPanel( 'acceptedAnswer' ),
+			type: 'Answer',
+		} );
+
+		const data = await publishAndGetJsonLd();
+		const questions = [].concat( findNode( data, 'FAQPage' ).mainEntity );
+		expect(
+			questions.find( ( question ) => question.name === 'Does it rain?' )
+		).toEqual( {
+			'@type': 'Question',
+			name: 'Does it rain?',
+			acceptedAnswer: { '@type': 'Answer', text: 'Mostly in spring.' },
+		} );
+	} );
+
+	test( 'a new type and re-apply clear step links the type does not have', async ( {
+		editor,
+		schemaPanel,
+		publishAndGetJsonLd,
+	} ) => {
+		await editor.canvas
+			.getByRole( 'textbox', { name: 'Add title' } )
+			.fill( 'Plant a tree' );
+		await editor.insertBlock( {
+			name: 'core/accordion',
+			innerBlocks: [
+				accordionItem( 'Dig a hole', 'Twice as wide as the roots.' ),
+			],
+		} );
+		await editor.selectBlocks(
+			editor.canvas.locator( '[data-type="core/accordion"]' )
+		);
+		await schemaPanel.open();
+		await schemaPanel.sidebar
+			.getByRole( 'button', { name: 'How-to', exact: true } )
+			.click();
+		expect( schemaTree( await editor.getBlocks() ) ).toEqual( [
+			[ 'core/accordion', expect.anything(), [ HOW_TO_ITEM ] ],
+		] );
+
+		await schemaPanel.setType( 'Article' );
+		await schemaPanel.sidebar
+			.getByRole( 'button', {
+				name: 'Apply suggested mappings to inner blocks',
+			} )
+			.click();
+
+		const [ accordion ] = await editor.getBlocks();
+		expect( accordion.attributes.schemaOrg.type ).toBe( 'Article' );
+		for ( const item of accordion.innerBlocks ) {
+			expect( item.attributes.schemaOrg ).toMatchObject( {
+				type: null,
+				isProperty: false,
+				propertyName: null,
+			} );
+		}
+
+		const data = await publishAndGetJsonLd();
+		const article = findNode( data, 'Article' );
+		expect( article ).toBeDefined();
+		expect( article ).not.toHaveProperty( 'step' );
+		expect( findNode( data, 'HowTo' ) ).toBeUndefined();
+	} );
+
+	test( 'turning off "Map as property of parent" on an FAQ item drops its question', async ( {
+		editor,
+		page,
+		schemaPanel,
+		publishAndGetJsonLd,
+	} ) => {
+		const { option } = await insertFromInserter( page, 'FAQ', 'FAQ' );
+		await option.click();
+		await fillAccordionItem( editor, page, 0, 'Kept?', 'Yes.' );
+		await fillAccordionItem( editor, page, 1, 'Dropped?', 'No.' );
+
+		await editor.selectBlocks(
+			editor.canvas
+				.locator( '[data-type="core/accordion-item"]' )
+				.nth( 1 )
+		);
+		await schemaPanel.open();
+		const toggle = schemaPanel.sidebar.getByRole( 'checkbox', {
+			name: 'Map as property of parent',
+		} );
+		await expect( toggle ).toBeChecked();
+		await toggle.click();
+		await expect( toggle ).not.toBeChecked();
+
+		const [ accordion ] = await editor.getBlocks();
+		expect( accordion.innerBlocks[ 1 ].attributes.schemaOrg ).toEqual( {
+			type: null,
+			mappings: {},
+			isProperty: false,
+			propertyName: null,
+			skipDefaults: true,
+		} );
+
+		const data = await publishAndGetJsonLd();
+		expect( findNode( data, 'FAQPage' ).mainEntity ).toEqual( {
+			'@type': 'Question',
+			name: 'Kept?',
+			acceptedAnswer: { '@type': 'Answer', text: 'Yes.' },
+		} );
+		expect( findNode( data, 'Question' ) ).toBeUndefined();
+	} );
+
 	test( 'Latest Posts block renders in the editor', async ( { editor } ) => {
 		await editor.insertBlock( { name: 'core/latest-posts' } );
 		const block = editor.canvas.locator(
