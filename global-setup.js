@@ -41,14 +41,26 @@ async function startPlayground() {
 	const wp = process.env.WP_PLAYGROUND_WP || blueprint.preferredVersions?.wp;
 	blueprint.preferredVersions = { ...blueprint.preferredVersions, php, wp };
 
-	const cli = await runCLI( {
+	const options = {
 		command: 'server',
 		port: resolvePort(),
 		php,
 		wp,
 		autoMount: process.cwd(),
 		blueprint,
-	} );
+	};
+
+	// Booting downloads WordPress and can hit a transient network error, so try twice.
+	let cli;
+	try {
+		cli = await runCLI( options );
+	} catch ( error ) {
+		// eslint-disable-next-line no-console
+		console.warn(
+			`Playground failed to start, retrying: ${ error.message }`
+		);
+		cli = await runCLI( options );
+	}
 
 	process.env.WP_BASE_URL = cli.serverUrl;
 	globalThis.__wpPlayground = cli;
