@@ -1,26 +1,33 @@
 <?php
 /**
- * Block extensions for schema.org mapping.
+ * Block extensions for schema.org mapping, and building schema objects from blocks.
  *
  * @package SchemaOrgBlocks
  */
 
 namespace SchemaOrgBlocks\BlockExtensions;
 
+use SchemaOrgBlocks\BlockValues;
+use SchemaOrgBlocks\SchemaTypes;
+
 /**
- * Register block context for schema.org types.
+ * Schema.org data types. Properties that accept one of these take plain values.
+ */
+const DATA_TYPES = [ 'Text', 'URL', 'Number', 'Integer', 'Float', 'Boolean', 'Date', 'DateTime', 'Time', 'Duration' ];
+
+/**
+ * Register the schemaOrg attribute and context on every block type.
  */
 function register_block_context() : void {
 	add_filter( 'register_block_type_args', __NAMESPACE__ . '\\add_schema_org_attribute', 10, 2 );
 	add_filter( 'register_block_type_args', __NAMESPACE__ . '\\add_block_context', 10, 2 );
-	add_filter( 'render_block', __NAMESPACE__ . '\\extract_schema_data', 10, 2 );
 }
 
 /**
  * Add schemaOrg attribute to all blocks.
  *
- * @param array<string, mixed> $args Block type registration args.
- * @param string              $block_name Block name.
+ * @param array<string, mixed> $args       Block type registration args.
+ * @param string               $block_name Block name.
  * @return array<string, mixed>
  */
 function add_schema_org_attribute( array $args, string $block_name ) : array {
@@ -39,275 +46,216 @@ function add_schema_org_attribute( array $args, string $block_name ) : array {
 /**
  * Add block context support for schema.org types.
  *
- * @param array<string, mixed> $args Block type registration args.
- * @param string              $block_name Block name.
+ * @param array<string, mixed> $args       Block type registration args.
+ * @param string               $block_name Block name.
  * @return array<string, mixed>
  */
 function add_block_context( array $args, string $block_name ) : array {
-	if ( ! isset( $args['provides_context'] ) ) {
-		$args['provides_context'] = [];
-	}
+	$args['provides_context']                   = $args['provides_context'] ?? [];
 	$args['provides_context']['schemaOrg/type'] = 'schemaOrg';
 
-	if ( ! isset( $args['uses_context'] ) ) {
-		$args['uses_context'] = [];
-	}
-	$args['uses_context'][] = 'schemaOrg/type';
+	$args['uses_context'] = array_values( array_unique( array_merge( $args['uses_context'] ?? [], [ 'schemaOrg/type' ] ) ) );
 
 	return $args;
 }
 
 /**
- * Extract schema.org data from a rendered block.
+ * Get a block's schemaOrg configuration with every key present and typed.
  *
- * Short-circuits when the request has already been primed via prime_schema_data(),
- * preventing duplicate entries when the_content() or a template renders after priming.
- *
- * Blocks with isProperty=true are skipped here — they are folded into their parent's
- * schema object by build_schema_object_with_children() when the parent fires.
- *
- * @param string               $block_content Rendered block content.
- * @param array<string, mixed> $block Block data.
- * @return string
+ * @param array<string, mixed> $block Parsed block.
+ * @return array{type: ?string, mappings: array<string, mixed>, isProperty: bool, propertyName: ?string}
  */
-function extract_schema_data( string $block_content, array $block ) : string {
-	global $schema_org_blocks_data, $schema_org_blocks_primed;
+function get_config( array $block ) : array {
+	$config = $block['attrs']['schemaOrg'] ?? [];
+	$config = is_array( $config ) ? $config : [];
 
-	if ( ! empty( $schema_org_blocks_primed ) ) {
-		return $block_content;
-	}
-
-	if ( ! isset( $schema_org_blocks_data ) ) {
-		$schema_org_blocks_data = [];
-	}
-
-	$schema_org = $block['attrs']['schemaOrg'] ?? null;
-
-	// Skip: no schema config, no type, or this block is a property of its parent
-	// (parent's render_block call handles it via build_schema_object_with_children).
-	if ( ! $schema_org || empty( $schema_org['type'] ) || ! empty( $schema_org['isProperty'] ) ) {
-		return $block_content;
-	}
-
-	$schema_object = build_schema_object_with_children( $block, $schema_org );
-
-	if ( ! empty( $schema_object ) ) {
-		$schema_org_blocks_data[] = $schema_object;
-	}
-
-	return $block_content;
-}
-
-/**
- * Build a schema.org object from a typed block, with isProperty child blocks folded in.
- *
- * For each direct inner block that has isProperty=true and a propertyName:
- *  - If the child also has a schema type, it becomes a nested object.
- *  - Otherwise its scalar value (from an attribute mapping or stripped innerHTML) is attached.
- * Child values always win over any parent mapping for the same property.
- *
- * @param array<string, mixed> $block Block data.
- * @param array<string, mixed> $schema_org Schema org configuration.
- * @return array<string, mixed>
- */
-function build_schema_object_with_children( array $block, array $schema_org ) : array {
-	$schema_object = build_schema_object( $block, $schema_org );
-
-	foreach ( $block['innerBlocks'] ?? [] as $child ) {
-		$child_schema_org = $child['attrs']['schemaOrg'] ?? null;
-
-		if ( ! $child_schema_org || empty( $child_schema_org['isProperty'] ) || empty( $child_schema_org['propertyName'] ) ) {
-			continue;
-		}
-
-		$prop = $child_schema_org['propertyName'];
-
-		if ( ! empty( $child_schema_org['type'] ) ) {
-			// Nested typed entity (e.g. ImageObject as image): recurse and attach as object.
-			$child_object             = build_schema_object_with_children( $child, $child_schema_org );
-			$schema_object[ $prop ]   = $child_object;
-		} else {
-			// Plain property child: resolve to a scalar value.
-			$value = resolve_property_value( $child, $child_schema_org, $prop );
-			if ( $value !== null && $value !== '' ) {
-				$schema_object[ $prop ] = $value;
-			}
-		}
-	}
-
-	return $schema_object;
-}
-
-/**
- * Resolve the scalar value for a property-child block.
- *
- * Checks for an explicit attribute mapping; falls back to stripped innerHTML.
- *
- * @param array<string, mixed> $block         Block data.
- * @param array<string, mixed> $schema_org    Block's schema org config.
- * @param string               $property_name The property being resolved.
- * @return string|null
- */
-function resolve_property_value( array $block, array $schema_org, string $property_name ) : ?string {
-	$mappings = $schema_org['mappings'] ?? [];
-
-	if ( isset( $mappings[ $property_name ] ) && ( $mappings[ $property_name ]['source'] ?? '' ) === 'attribute' ) {
-		$attr_name = $mappings[ $property_name ]['attributeName'] ?? null;
-		if ( $attr_name && isset( $block['attrs'][ $attr_name ] ) ) {
-			return (string) $block['attrs'][ $attr_name ];
-		}
-	}
-
-	$content = wp_strip_all_tags( $block['innerHTML'] ?? '' );
-	return trim( $content ) ?: null;
-}
-
-/**
- * Build a schema.org object from block data and mappings.
- * Works against both live rendered blocks and parse_blocks() output.
- *
- * @param array<string, mixed> $block Block data.
- * @param array<string, mixed> $schema_org Schema org configuration.
- * @return array<string, mixed>
- */
-function build_schema_object( array $block, array $schema_org ) : array {
-	$schema_type = $schema_org['type'];
-	$mappings    = $schema_org['mappings'] ?? [];
-
-	$schema_object = [
-		'@type' => $schema_type,
+	return [
+		'type'         => is_string( $config['type'] ?? null ) && '' !== $config['type'] ? $config['type'] : null,
+		'mappings'     => is_array( $config['mappings'] ?? null ) ? $config['mappings'] : [],
+		'isProperty'   => ! empty( $config['isProperty'] ),
+		'propertyName' => is_string( $config['propertyName'] ?? null ) && '' !== $config['propertyName'] ? $config['propertyName'] : null,
 	];
-
-	foreach ( $mappings as $property => $mapping ) {
-		$value = null;
-
-		if ( $mapping['source'] === 'attribute' ) {
-			$attribute_name = $mapping['attributeName'] ?? null;
-			if ( $attribute_name && isset( $block['attrs'][ $attribute_name ] ) ) {
-				$value = $block['attrs'][ $attribute_name ];
-			}
-		} elseif ( $mapping['source'] === 'content' ) {
-			$value = wp_strip_all_tags( $block['innerHTML'] ?? '' );
-		} elseif ( $mapping['source'] === 'context' ) {
-			continue;
-		}
-
-		if ( $value !== null ) {
-			$schema_object[ $property ] = $value;
-		}
-	}
-
-	return $schema_object;
 }
 
 /**
- * Return true if a registered block type has a server-side render callback.
+ * Whether a block is a standalone schema entity, rather than a property of its parent.
  *
- * @param string $name Block name.
+ * @param array<string, mixed> $block Parsed block.
  * @return bool
  */
-function is_dynamic_block_name( string $name ) : bool {
-	$type = \WP_Block_Type_Registry::get_instance()->get_registered( $name );
-	return $type instanceof \WP_Block_Type && $type->is_dynamic();
+function is_entity( array $block ) : bool {
+	$config = get_config( $block );
+	return null !== $config['type'] && ! $config['isProperty'];
 }
 
 /**
- * Walk a block tree and return schema objects for all static (non-dynamic) blocks.
- * Subtrees rooted in a dynamic block are skipped — their output changes per-request.
- * Blocks with isProperty=true are folded into their parent and excluded from top-level output.
+ * Build schema objects for every standalone typed block in a parsed block tree.
  *
- * @param array<int, array<string, mixed>> $blocks Parsed block list from parse_blocks().
+ * @param array<int, array<string, mixed>> $blocks Parsed blocks.
  * @return array<int, array<string, mixed>>
  */
-function extract_static_schema( array $blocks ) : array {
+function extract_schema( array $blocks ) : array {
 	$schema = [];
 
 	foreach ( $blocks as $block ) {
-		$name = $block['blockName'] ?? '';
-
-		if ( $name && is_dynamic_block_name( $name ) ) {
-			continue;
-		}
-
-		$schema_org = $block['attrs']['schemaOrg'] ?? [];
-
-		if ( ! empty( $schema_org['type'] ) && empty( $schema_org['isProperty'] ) ) {
-			// Top-level typed block: build its schema and fold in isProperty children.
-			$object = build_schema_object_with_children( $block, $schema_org );
-			if ( ! empty( $object ) ) {
+		if ( is_entity( $block ) ) {
+			$object = build_schema_object( $block );
+			if ( $object ) {
 				$schema[] = $object;
 			}
-			// isProperty children are consumed by build_schema_object_with_children — don't recurse.
-		} elseif ( empty( $schema_org['isProperty'] ) ) {
-			// Container with no type and not a property child: recurse to find typed descendants.
-			if ( ! empty( $block['innerBlocks'] ) ) {
-				$schema = array_merge( $schema, extract_static_schema( $block['innerBlocks'] ) );
-			}
 		}
-		// isProperty=true blocks are handled by their parent — skip entirely at top level.
+
+		$schema = array_merge( $schema, extract_schema( BlockValues\get_inner_blocks( $block ) ) );
 	}
 
 	return $schema;
 }
 
 /**
- * Return true if the block tree contains at least one dynamic block.
+ * Build the schema object for a typed block.
  *
- * @param array<int, array<string, mixed>> $blocks Parsed block list.
+ * Values come from the block's own mappings, then from direct inner blocks marked as
+ * properties. A child with its own type becomes a nested object. Several children for the
+ * same property produce an array. Child values replace a mapping for the same property.
+ *
+ * @param array<string, mixed> $block Parsed block.
+ * @return array<string, mixed> The object, or an empty array when it has no properties.
+ */
+function build_schema_object( array $block ) : array {
+	$config = get_config( $block );
+	$type   = $config['type'];
+
+	if ( null === $type ) {
+		return [];
+	}
+
+	$object = [ '@type' => $type ];
+
+	foreach ( $config['mappings'] as $property => $mapping ) {
+		$value = resolve_mapping( $block, is_array( $mapping ) ? $mapping : [] );
+		if ( ! is_empty_value( $value ) ) {
+			$object[ $property ] = coerce_value( $type, $property, $value );
+		}
+	}
+
+	$from_children = [];
+
+	foreach ( BlockValues\get_inner_blocks( $block ) as $child ) {
+		$child_config = get_config( $child );
+		$property     = $child_config['propertyName'];
+
+		if ( ! $child_config['isProperty'] || null === $property ) {
+			continue;
+		}
+
+		$value = null !== $child_config['type']
+			? build_schema_object( $child )
+			: get_property_value( $child, $property );
+
+		if ( ! is_empty_value( $value ) ) {
+			$from_children[ $property ][] = coerce_value( $type, $property, $value );
+		}
+	}
+
+	foreach ( $from_children as $property => $values ) {
+		$object[ $property ] = 1 === count( $values ) ? $values[0] : $values;
+	}
+
+	return count( $object ) > 1 ? $object : [];
+}
+
+/**
+ * Get the value an untyped property block gives its parent.
+ *
+ * Uses the block's mapping for that property when there is one, otherwise its text content.
+ *
+ * @param array<string, mixed> $block    Parsed block.
+ * @param string               $property Property name.
+ * @return string|int|float|bool|null
+ */
+function get_property_value( array $block, string $property ) {
+	$mapping = get_config( $block )['mappings'][ $property ] ?? null;
+
+	if ( is_array( $mapping ) ) {
+		return resolve_mapping( $block, $mapping );
+	}
+
+	return BlockValues\get_text( BlockValues\get_html( $block ) );
+}
+
+/**
+ * Resolve a property mapping against a block.
+ *
+ * An attribute mapping with no attribute name falls back to the block's text content.
+ *
+ * @param array<string, mixed> $block   Parsed block.
+ * @param array<string, mixed> $mapping Mapping, e.g. [ 'source' => 'attribute', 'attributeName' => 'url' ].
+ * @return string|int|float|bool|null
+ */
+function resolve_mapping( array $block, array $mapping ) {
+	$source         = $mapping['source'] ?? '';
+	$attribute_name = $mapping['attributeName'] ?? '';
+
+	if ( 'attribute' === $source && is_string( $attribute_name ) && '' !== $attribute_name ) {
+		return BlockValues\get_attribute( $block, $attribute_name );
+	}
+
+	if ( 'attribute' === $source || 'content' === $source ) {
+		return BlockValues\get_text( BlockValues\get_html( $block ) );
+	}
+
+	return null;
+}
+
+/**
+ * Wrap a plain value in an object when the property only accepts objects.
+ *
+ * For example a text value for Question.acceptedAnswer becomes an Answer with that text,
+ * and a name for Article.author becomes a Person with that name.
+ *
+ * @param string $type     Schema type of the object the property belongs to.
+ * @param string $property Property name.
+ * @param mixed  $value    Value.
+ * @return mixed
+ */
+function coerce_value( string $type, string $property, $value ) {
+	if ( ! is_scalar( $value ) ) {
+		return $value;
+	}
+
+	$definition = SchemaTypes\get_type_properties( $type )[ $property ] ?? null;
+	if ( ! $definition ) {
+		return $value;
+	}
+
+	$expected = (array) $definition['type'];
+	if ( array_intersect( $expected, DATA_TYPES ) ) {
+		return $value;
+	}
+
+	$target     = $expected[0];
+	$properties = SchemaTypes\get_type_properties( $target );
+
+	$is_url = is_string( $value ) && preg_match( '#^https?://#i', $value ) && false !== filter_var( $value, FILTER_VALIDATE_URL );
+
+	if ( $is_url && ( isset( $properties['contentUrl'] ) || isset( $properties['url'] ) ) ) {
+		$key = isset( $properties['contentUrl'] ) ? 'contentUrl' : 'url';
+	} else {
+		$key = isset( $properties['text'] ) ? 'text' : 'name';
+	}
+
+	return [
+		'@type' => $target,
+		$key    => $value,
+	];
+}
+
+/**
+ * Whether a resolved value should be left out of the output.
+ *
+ * @param mixed $value Value.
  * @return bool
  */
-function tree_has_dynamic_block( array $blocks ) : bool {
-	foreach ( $blocks as $block ) {
-		$name = $block['blockName'] ?? '';
-		if ( $name && is_dynamic_block_name( $name ) ) {
-			return true;
-		}
-		if ( ! empty( $block['innerBlocks'] ) && tree_has_dynamic_block( $block['innerBlocks'] ) ) {
-			return true;
-		}
-	}
-	return false;
-}
-
-/**
- * Precompute and persist schema data when a post (or block template) is saved.
- *
- * @param int      $post_id Post ID.
- * @param \WP_Post $post    Post object.
- */
-function on_save_post( int $post_id, \WP_Post $post ) : void {
-	if ( defined( 'DOING_AUTOSAVE' ) && DOING_AUTOSAVE ) {
-		return;
-	}
-	if ( wp_is_post_revision( $post_id ) ) {
-		return;
-	}
-
-	if ( ! has_blocks( $post->post_content ) ) {
-		delete_post_meta( $post_id, '_hm_schema_static' );
-		delete_post_meta( $post_id, '_hm_schema_has_dynamic' );
-		invalidate_schema_cache();
-		return;
-	}
-
-	$blocks  = parse_blocks( $post->post_content );
-	$static  = extract_static_schema( $blocks );
-	$dynamic = tree_has_dynamic_block( $blocks );
-
-	update_post_meta( $post_id, '_hm_schema_static', $static );
-	update_post_meta( $post_id, '_hm_schema_has_dynamic', $dynamic ? 1 : 0 );
-
-	invalidate_schema_cache();
-}
-
-/**
- * Flush the schema object cache group so stale data isn't served.
- *
- * @param int $post_id Unused; present for use as a hook callback.
- */
-function invalidate_schema_cache( int $post_id = 0 ) : void {
-	if ( function_exists( 'wp_cache_flush_group' ) ) {
-		wp_cache_flush_group( 'hm-schema-blocks' );
-	}
-	// On WP < 6.1 without group flush support, cached entries expire via their TTL.
+function is_empty_value( $value ) : bool {
+	return null === $value || '' === $value || [] === $value;
 }

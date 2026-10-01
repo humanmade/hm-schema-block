@@ -1,17 +1,26 @@
 <?php
 /**
- * Schema.org output handling.
+ * Collect schema objects for the current request and output them.
+ *
+ * Block templates render before wp_head, so their schema is collected from render_block as
+ * the page renders. Classic themes render post content after wp_head, so for them the
+ * queried post's blocks are read directly instead.
  *
  * @package SchemaOrgBlocks
  */
 
 namespace SchemaOrgBlocks\SchemaOutput;
 
+use SchemaOrgBlocks\BlockExtensions;
+use WP_Post;
+
 /**
- * Register output hooks.
- * Priming is registered separately in namespace.php on template_redirect priority 0.
+ * Register collection and output hooks.
  */
 function init() : void {
+	add_filter( 'template_include', __NAMESPACE__ . '\\start_collecting', PHP_INT_MAX );
+	add_filter( 'render_block', __NAMESPACE__ . '\\collect_rendered_block', 10, 2 );
+
 	if ( is_yoast_seo_active() ) {
 		add_filter( 'wpseo_schema_graph', __NAMESPACE__ . '\\add_to_yoast_graph' );
 	} else {
@@ -20,198 +29,105 @@ function init() : void {
 }
 
 /**
- * Populate $schema_org_blocks_data before wp_head fires.
- * Registered on template_redirect at priority 0 (namespace.php).
+ * Get or update the collection state for the current request.
  *
- * After this runs, the primed flag is set and render_block extraction
- * becomes a no-op, preventing duplicate entries when the_content() renders later.
+ * @param array<string, mixed>|null $update Keys to replace: `objects` (keyed by hash) and `collecting`.
+ * @return array{objects: array<string, array<string, mixed>>, collecting: bool}
  */
-function prime_schema_data() : void {
-	global $schema_org_blocks_data, $schema_org_blocks_primed;
+function state( ?array $update = null ) : array {
+	static $state = [
+		'objects'    => [],
+		'collecting' => false,
+	];
 
-	$schema_org_blocks_data  = [];
-	$schema_org_blocks_primed = false;
-
-	if ( wp_is_block_theme() ) {
-		// FSE: render the active block template, which folds in post-content blocks.
-		prime_from_active_template();
-	} elseif ( is_singular() ) {
-		// Classic theme singular: use save-time static cache + dynamic fallback.
-		prime_singular_classic();
+	if ( null !== $update ) {
+		$state = array_merge( $state, $update );
 	}
-	// Classic theme archives have no block content to extract.
 
-	$schema_org_blocks_primed = true;
+	return $state;
 }
 
 /**
- * Prime from the current singular post's saved static data (classic theme path).
- * Falls back to a cached dynamic render when dynamic blocks are present or cache is cold.
- */
-function prime_singular_classic() : void {
-	$post = get_post();
-	if ( ! $post || ! has_blocks( $post->post_content ) ) {
-		return;
-	}
-
-	$static      = get_post_meta( $post->ID, '_hm_schema_static', true );
-	$has_static  = is_array( $static );
-	$has_dynamic = (bool) get_post_meta( $post->ID, '_hm_schema_has_dynamic', true );
-
-	if ( $has_static && ! $has_dynamic ) {
-		// Fast path: no render needed.
-		global $schema_org_blocks_data;
-		$schema_org_blocks_data = $static;
-		return;
-	}
-
-	dynamic_render_with_cache( 'post_' . $post->ID, $post->post_content );
-}
-
-/**
- * Prime schema by rendering the active FSE block template.
- * For singular pages, the template embeds core/post-content, so post blocks are included.
- */
-function prime_from_active_template() : void {
-	$template = find_active_block_template();
-	if ( ! $template || empty( $template->content ) ) {
-		return;
-	}
-
-	$queried_id = (int) get_queried_object_id();
-	$query_hash = md5( serialize( (array) ( $GLOBALS['wp_query']->query_vars ?? [] ) ) );
-	$slug       = $template->slug ?? (string) ( $template->wp_id ?? 'index' );
-	$key        = 'tpl_' . $slug . '_' . $queried_id . '_' . $query_hash;
-
-	dynamic_render_with_cache( $key, $template->content );
-}
-
-/**
- * Render block content in an isolated scope, cache the collected schema entries,
- * and merge them into $schema_org_blocks_data.
+ * Add schema objects to the collection, skipping exact duplicates.
  *
- * @param string $key     Object-cache key (within 'hm-schema-blocks' group).
- * @param string $content Raw block content with block comment delimiters.
+ * @param array<int, array<string, mixed>> $objects Schema objects.
  */
-function dynamic_render_with_cache( string $key, string $content ) : void {
-	global $schema_org_blocks_data, $schema_org_blocks_primed;
+function add_objects( array $objects ) : void {
+	$collected = state()['objects'];
 
-	$cached = wp_cache_get( $key, 'hm-schema-blocks' );
-	if ( is_array( $cached ) ) {
-		$schema_org_blocks_data = array_merge( $schema_org_blocks_data, $cached );
-		return;
+	foreach ( $objects as $object ) {
+		$collected[ md5( (string) wp_json_encode( $object ) ) ] = $object;
 	}
 
-	// Render in isolation: snapshot current state, reset, render, then restore + merge.
-	$previous_data   = $schema_org_blocks_data;
-	$previous_primed = $schema_org_blocks_primed;
-
-	$schema_org_blocks_data   = [];
-	$schema_org_blocks_primed = false;
-
-	do_blocks( $content ); // HTML discarded; side-effect populates $schema_org_blocks_data.
-
-	$result = $schema_org_blocks_data;
-
-	$schema_org_blocks_data   = array_merge( $previous_data, $result );
-	$schema_org_blocks_primed = $previous_primed;
-
-	wp_cache_set( $key, $result, 'hm-schema-blocks', HOUR_IN_SECONDS );
+	state( [ 'objects' => $collected ] );
 }
 
 /**
- * Find the active block template for the current request by walking the hierarchy.
+ * Start collecting once the front-end template is chosen.
  *
- * @return \WP_Block_Template|null
+ * @param string $template Template file path.
+ * @return string
  */
-function find_active_block_template() : ?\WP_Block_Template {
-	$stylesheet = get_stylesheet();
+function start_collecting( $template ) {
+	state(
+		[
+			'objects'    => [],
+			'collecting' => false,
+		]
+	);
 
-	foreach ( resolve_template_slugs() as $slug ) {
-		$template = get_block_template( $stylesheet . '//' . $slug, 'wp_template' );
-		if ( $template ) {
-			return $template;
-		}
+	if ( ! empty( $GLOBALS['_wp_current_template_content'] ) ) {
+		state( [ 'collecting' => true ] );
+		return $template;
 	}
 
-	return null;
+	$post = is_singular() ? get_queried_object() : null;
+
+	if ( $post instanceof WP_Post && has_blocks( $post ) && ! post_password_required( $post ) ) {
+		add_objects( BlockExtensions\extract_schema( parse_blocks( $post->post_content ) ) );
+	}
+
+	return $template;
 }
 
 /**
- * Return block template slug candidates in hierarchy order for the current request.
- * Mirrors WordPress's block template resolution without relying on private functions.
+ * Collect the schema object of a typed block as it renders.
  *
- * @return array<int, string>
+ * Excerpts are skipped: they render a trimmed copy of a post's blocks.
+ *
+ * @param string               $block_content Rendered block content.
+ * @param array<string, mixed> $block         Parsed block.
+ * @return string
  */
-function resolve_template_slugs() : array {
-	$slugs = [];
-
-	if ( is_singular() ) {
-		$post = get_post();
-		if ( $post ) {
-			$page_tpl = get_page_template_slug( $post->ID );
-			if ( $page_tpl ) {
-				$slugs[] = str_replace( '.html', '', basename( (string) $page_tpl ) );
-			}
-			$slugs[] = 'single-' . $post->post_type . '-' . $post->post_name;
-			$slugs[] = 'single-' . $post->post_type;
-		}
-		$slugs[] = 'single';
-		$slugs[] = 'singular';
-	} elseif ( is_front_page() ) {
-		$slugs = [ 'front-page', 'home' ];
-	} elseif ( is_home() ) {
-		$slugs = [ 'home' ];
-	} elseif ( is_category() ) {
-		$cat = get_queried_object();
-		if ( $cat instanceof \WP_Term ) {
-			$slugs[] = 'category-' . $cat->slug;
-			$slugs[] = 'category-' . $cat->term_id;
-		}
-		$slugs[] = 'category';
-		$slugs[] = 'archive';
-	} elseif ( is_tag() ) {
-		$tag = get_queried_object();
-		if ( $tag instanceof \WP_Term ) {
-			$slugs[] = 'tag-' . $tag->slug;
-			$slugs[] = 'tag-' . $tag->term_id;
-		}
-		$slugs[] = 'tag';
-		$slugs[] = 'archive';
-	} elseif ( is_tax() ) {
-		$term = get_queried_object();
-		if ( $term instanceof \WP_Term ) {
-			$slugs[] = 'taxonomy-' . $term->taxonomy . '-' . $term->slug;
-			$slugs[] = 'taxonomy-' . $term->taxonomy;
-		}
-		$slugs[] = 'taxonomy';
-		$slugs[] = 'archive';
-	} elseif ( is_post_type_archive() ) {
-		$post_type = (string) get_query_var( 'post_type' );
-		if ( $post_type ) {
-			$slugs[] = 'archive-' . $post_type;
-		}
-		$slugs[] = 'archive';
-	} elseif ( is_author() ) {
-		$author = get_queried_object();
-		if ( $author instanceof \WP_User ) {
-			$slugs[] = 'author-' . $author->user_nicename;
-			$slugs[] = 'author-' . $author->ID;
-		}
-		$slugs[] = 'author';
-		$slugs[] = 'archive';
-	} elseif ( is_date() ) {
-		$slugs = [ 'date', 'archive' ];
-	} elseif ( is_archive() ) {
-		$slugs = [ 'archive' ];
-	} elseif ( is_search() ) {
-		$slugs = [ 'search' ];
-	} elseif ( is_404() ) {
-		$slugs = [ '404' ];
+function collect_rendered_block( $block_content, $block ) {
+	if ( ! state()['collecting'] || ! is_array( $block ) || doing_filter( 'get_the_excerpt' ) ) {
+		return $block_content;
 	}
 
-	$slugs[] = 'index';
-	return $slugs;
+	if ( BlockExtensions\is_entity( $block ) ) {
+		$object = BlockExtensions\build_schema_object( $block );
+		if ( $object ) {
+			add_objects( [ $object ] );
+		}
+	}
+
+	return $block_content;
+}
+
+/**
+ * Get the schema graph for the current request.
+ *
+ * @return array<int, array<string, mixed>>
+ */
+function get_graph() : array {
+	/**
+	 * Filter the schema objects output for the current request.
+	 *
+	 * @param array<int, array<string, mixed>> $graph Schema objects.
+	 */
+	$graph = apply_filters( 'schema_org_blocks_graph', array_values( state()['objects'] ) );
+
+	return is_array( $graph ) ? array_values( array_filter( $graph ) ) : [];
 }
 
 /**
@@ -230,33 +146,26 @@ function is_yoast_seo_active() : bool {
  * @return array<int, mixed>
  */
 function add_to_yoast_graph( $graph ) : array {
-	global $schema_org_blocks_data;
-
-	return array_merge( is_array( $graph ) ? $graph : [], array_values( array_filter( (array) $schema_org_blocks_data ) ) );
+	return array_merge( is_array( $graph ) ? $graph : [], get_graph() );
 }
 
 /**
- * Output JSON-LD schema in the site header.
+ * Output the collected schema objects as JSON-LD.
  */
 function output_json_ld() : void {
-	global $schema_org_blocks_data;
+	$graph = get_graph();
 
-	if ( empty( $schema_org_blocks_data ) ) {
+	if ( ! $graph ) {
 		return;
 	}
 
-	$graph = array_values( array_filter( $schema_org_blocks_data ) );
-
-	if ( empty( $graph ) ) {
-		return;
-	}
-
-	$schema_output = [
-		'@context' => 'https://schema.org',
-		'@graph'   => $graph,
-	];
-
-	$json = wp_json_encode( $schema_output, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE | JSON_HEX_TAG | JSON_HEX_AMP );
+	$json = wp_json_encode(
+		[
+			'@context' => 'https://schema.org',
+			'@graph'   => $graph,
+		],
+		JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE | JSON_HEX_TAG | JSON_HEX_AMP
+	);
 
 	if ( $json ) {
 		printf( "<script type=\"application/ld+json\">%s</script>\n", $json ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- JSON with < > & hex-escaped.
