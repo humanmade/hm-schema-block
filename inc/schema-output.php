@@ -13,6 +13,7 @@ namespace SchemaOrgBlocks\SchemaOutput;
 
 use SchemaOrgBlocks\BlockExtensions;
 use SchemaOrgBlocks\BlockValues;
+use SchemaOrgBlocks\DynamicValues;
 use WP_Block;
 use WP_Post;
 
@@ -155,7 +156,7 @@ function collect_rendered_block( $block_content, $block, $instance = null ) {
 	$context = $instance instanceof WP_Block ? $instance->context : [];
 
 	if ( BlockExtensions\is_hidden( $block ) ) {
-		remove_objects( BlockExtensions\extract_schema( BlockValues\get_inner_blocks( $block ), BlockExtensions\get_inner_context( $block, $context ) ) );
+		remove_objects( BlockExtensions\extract_schema( BlockValues\get_inner_blocks( $block, $context ), BlockExtensions\get_inner_context( $block, $context ) ) );
 		return $block_content;
 	}
 
@@ -172,14 +173,126 @@ function collect_rendered_block( $block_content, $block, $instance = null ) {
  * @return array<int, array<string, mixed>>
  */
 function get_graph() : array {
+	$graph = remove_nested_duplicates( array_values( state()['objects'] ) );
+
+	if ( ! is_yoast_seo_active() ) {
+		$graph = add_referenced_site_entities( $graph );
+	}
+
 	/**
 	 * Filter the schema objects output for the current request.
 	 *
 	 * @param array<int, array<string, mixed>> $graph Schema objects.
 	 */
-	$graph = apply_filters( 'schema_org_blocks_graph', array_values( state()['objects'] ) );
+	$graph = apply_filters( 'schema_org_blocks_graph', $graph );
 
 	return is_array( $graph ) ? array_values( array_filter( $graph ) ) : [];
+}
+
+/**
+ * Remove top-level objects that also appear nested inside another object.
+ *
+ * Entities inside a template entity, such as an FAQ in the post content of a typed single
+ * template, are collected on their own as they render and again as part of the outer entity.
+ *
+ * @param array<int, array<string, mixed>> $graph Schema objects.
+ * @return array<int, array<string, mixed>>
+ */
+function remove_nested_duplicates( array $graph ) : array {
+	$nested = [];
+
+	$collect = static function ( $value ) use ( &$collect, &$nested ) : void {
+		if ( ! is_array( $value ) ) {
+			return;
+		}
+		foreach ( $value as $child ) {
+			if ( is_array( $child ) && isset( $child['@type'] ) ) {
+				$nested[ md5( (string) wp_json_encode( $child ) ) ] = true;
+			}
+			$collect( $child );
+		}
+	};
+
+	foreach ( $graph as $object ) {
+		$collect( $object );
+	}
+
+	return array_values(
+		array_filter(
+			$graph,
+			static fn ( $object ) => ! isset( $nested[ md5( (string) wp_json_encode( $object ) ) ] )
+		)
+	);
+}
+
+/**
+ * Add WebSite and Organization nodes built from the site settings when the graph refers to
+ * `#website` or `#organization` but no block defines them.
+ *
+ * @param array<int, array<string, mixed>> $graph Schema objects.
+ * @return array<int, array<string, mixed>>
+ */
+function add_referenced_site_entities( array $graph ) : array {
+	[ $defined, $referenced ] = get_graph_ids( $graph );
+
+	$website      = BlockExtensions\get_entity_id_url( 'website' );
+	$organization = BlockExtensions\get_entity_id_url( 'organization' );
+
+	if ( isset( $referenced[ $website ] ) && ! isset( $defined[ $website ] ) ) {
+		$graph[]                     = [
+			'@id'       => $website,
+			'@type'     => 'WebSite',
+			'url'       => DynamicValues\get_site_field( 'url' ),
+			'name'      => DynamicValues\get_site_field( 'name' ),
+			'publisher' => [ '@id' => $organization ],
+		];
+		$referenced[ $organization ] = true;
+	}
+
+	if ( isset( $referenced[ $organization ] ) && ! isset( $defined[ $organization ] ) ) {
+		$graph[] = array_filter(
+			[
+				'@id'   => $organization,
+				'@type' => 'Organization',
+				'url'   => DynamicValues\get_site_field( 'url' ),
+				'name'  => DynamicValues\get_site_field( 'name' ),
+				'logo'  => DynamicValues\get_site_field( 'logo' ),
+			]
+		);
+	}
+
+	return $graph;
+}
+
+/**
+ * Get the @ids nodes in a graph define, and the @ids its references point to.
+ *
+ * A reference is an object with only an `@id`; a definition is an object with an `@id` and more.
+ *
+ * @param array<int, array<string, mixed>> $graph Schema objects.
+ * @return array{0: array<string, bool>, 1: array<string, bool>} Defined and referenced ids.
+ */
+function get_graph_ids( array $graph ) : array {
+	$defined    = [];
+	$referenced = [];
+
+	$walk = static function ( $value ) use ( &$walk, &$defined, &$referenced ) : void {
+		if ( ! is_array( $value ) ) {
+			return;
+		}
+		if ( isset( $value['@id'] ) && is_string( $value['@id'] ) ) {
+			if ( 1 === count( $value ) ) {
+				$referenced[ $value['@id'] ] = true;
+			} else {
+				$defined[ $value['@id'] ] = true;
+			}
+		}
+		array_map( $walk, $value );
+	};
+
+	$walk( $graph );
+
+	return [ $defined, $referenced ];
 }
 
 /**
