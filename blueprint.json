@@ -8,9 +8,6 @@
 	"features": {
 		"networking": true
 	},
-	"extraLibraries": [
-		"wp-cli"
-	],
 	"steps": [
 		{
 			"step": "login"
@@ -34,12 +31,8 @@
 			}
 		},
 		{
-			"step": "wp-cli",
-			"command": "wp option update permalink_structure /%postname%/"
-		},
-		{
-			"step": "wp-cli",
-			"command": "wp rewrite flush"
+			"step": "runPHP",
+			"code": "<?php require '/wordpress/wp-load.php'; global $wp_rewrite; $wp_rewrite->set_permalink_structure( '/%postname%/' ); flush_rewrite_rules();"
 		}
 	]
 }
