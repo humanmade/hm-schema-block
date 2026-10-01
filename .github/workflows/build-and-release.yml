@@ -24,7 +24,7 @@ jobs:
                   cache: 'npm'
 
             - name: Install dependencies
-              run: npm i
+              run: npm ci
 
             - name: Set version from commit SHA
               run: sed -i "s/__VERSION__/dev-$(git rev-parse --short HEAD)/g" schema-org-blocks.php
