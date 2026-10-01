@@ -128,7 +128,7 @@ const withSchemaOrgControls = createHigherOrderComponent( ( BlockEdit ) => {
 			if ( ! applyDefaults ) {
 				return;
 			}
-			const defaults = getSmartDefaults( name, parentType );
+			const defaults = getSmartDefaults( name, parentType, attributes );
 			if ( defaults ) {
 				// Fold the change into the undo step that inserted or retyped the block.
 				__unstableMarkNextChangeAsNotPersistent();

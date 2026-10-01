@@ -42,7 +42,8 @@ function get_value( array $block, array $context ) : ?string {
 		case 'core/post-title':
 			return get_post_field( 'title', $post );
 		case 'core/post-date':
-			$is_modified = 'modified' === ( $block['attrs']['displayType'] ?? '' );
+			$bound_field = $block['attrs']['metadata']['bindings']['datetime']['args']['field'] ?? '';
+			$is_modified = 'modified' === $bound_field || 'modified' === ( $block['attrs']['displayType'] ?? '' );
 			return get_post_field( $is_modified ? 'modified' : 'date', $post );
 		case 'core/post-author':
 		case 'core/post-author-name':

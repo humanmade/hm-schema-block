@@ -7,8 +7,8 @@ import { __ } from '@wordpress/i18n';
 /**
  * Default rules by block name.
  *
- * `properties` lists candidate parent properties in order of preference; the first one the
- * parent type has is used. `repeatable` rules apply to every matching sibling, producing an
+ * `properties` lists candidate parent properties in order of preference, or is a function of
+ * the block's attributes that returns them; the first one the parent type has is used. `repeatable` rules apply to every matching sibling, producing an
  * array; other rules apply to the first unconfigured sibling of that block type only.
  * `exceptParentTypes` lists parent types the rule does not apply in. `nested` rules make the
  * block a typed entity of its own, so its inner blocks are not properties of the outer type.
@@ -70,7 +70,11 @@ const RULES = {
 		properties: [ 'headline', 'name' ],
 	},
 	'core/post-date': {
-		properties: [ 'datePublished' ],
+		properties: ( attributes ) =>
+			attributes?.metadata?.bindings?.datetime?.args?.field ===
+				'modified' || attributes?.displayType === 'modified'
+				? [ 'dateModified' ]
+				: [ 'datePublished' ],
 	},
 	'core/post-author-name': {
 		properties: [ 'author' ],
@@ -294,9 +298,10 @@ function attributeProperty( propertyName, attributeName ) {
  *
  * @param {string}      blockName  Block name.
  * @param {string|null} parentType Parent block's schema type.
+ * @param {Object}      attributes The block's attributes, for rules that depend on them.
  * @return {Object|null} schemaOrg attribute value, or null when there is no default.
  */
-export function getSmartDefaults( blockName, parentType ) {
+export function getSmartDefaults( blockName, parentType, attributes = {} ) {
 	const rule = RULES[ blockName ];
 	const parentProperties =
 		window.schemaOrgBlocksData?.schemaProperties?.[ parentType ];
@@ -309,7 +314,11 @@ export function getSmartDefaults( blockName, parentType ) {
 		return null;
 	}
 
-	const propertyName = rule.properties.find(
+	const candidates =
+		typeof rule.properties === 'function'
+			? rule.properties( attributes )
+			: rule.properties;
+	const propertyName = candidates.find(
 		( property ) => parentProperties[ property ]
 	);
 
@@ -356,7 +365,11 @@ export function shouldApplyDefaults( block, parentType, siblings ) {
 		return false;
 	}
 
-	const defaults = getSmartDefaults( block.name, parentType );
+	const defaults = getSmartDefaults(
+		block.name,
+		parentType,
+		block.attributes
+	);
 
 	if ( ! defaults ) {
 		return false;
@@ -418,8 +431,11 @@ export function getTreeDefaults( blocks, parentType ) {
 		getPropertyCandidates( blocks )
 			.filter(
 				( block ) =>
-					! getSmartDefaults( block.name, parentType ) &&
-					block.attributes?.schemaOrg?.isProperty
+					! getSmartDefaults(
+						block.name,
+						parentType,
+						block.attributes
+					) && block.attributes?.schemaOrg?.isProperty
 			)
 			.map( ( block ) => block.attributes.schemaOrg.propertyName )
 	);
@@ -429,7 +445,11 @@ export function getTreeDefaults( blocks, parentType ) {
 
 	const visit = ( list ) =>
 		list.forEach( ( block ) => {
-			const defaults = getSmartDefaults( block.name, parentType );
+			const defaults = getSmartDefaults(
+				block.name,
+				parentType,
+				block.attributes
+			);
 			const current = block.attributes?.schemaOrg;
 
 			if ( ! defaults ) {

@@ -366,9 +366,7 @@ test.describe( 'Schema.org patterns', () => {
 		expectFaq( await publishAndGetJsonLd() );
 	} );
 
-	// The plugin reads the legacy displayType attribute, not the block binding the
-	// Modified Date variation uses since WordPress 6.9, so it outputs the publish date.
-	test.fixme( 'Modified Date block gives the modified date', async ( {
+	test( 'Modified Date block gives the modified date', async ( {
 		page,
 		requestUtils,
 	} ) => {
@@ -395,6 +393,13 @@ test.describe( 'Schema.org patterns', () => {
 		} );
 
 		try {
+			// A new post's modified date starts as its publish date; editing it moves it on.
+			await requestUtils.rest( {
+				method: 'POST',
+				path: `/wp/v2/posts/${ post.id }`,
+				data: { title: 'Old post, updated' },
+			} );
+
 			const [ article ] = ofType(
 				await getJsonLdAt( page, post.link ),
 				'Article'

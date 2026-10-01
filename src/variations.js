@@ -18,7 +18,7 @@ import { PRESETS, getSmartDefaults } from './utils/smart-defaults';
 function withDefaults( template, parentType ) {
 	return template.map( ( [ name, attributes = {}, innerBlocks = [] ] ) => {
 		const schemaOrg = parentType
-			? getSmartDefaults( name, parentType )
+			? getSmartDefaults( name, parentType, attributes )
 			: null;
 
 		return [
