@@ -18,8 +18,10 @@ composer install
 
 3. **Start development environment**
 ```bash
-npm run env:start
+npm run playground:start
 ```
+
+This starts WordPress Playground at http://127.0.0.1:9400 with the plugin mounted and active. Stop it with Ctrl+C.
 
 4. **Start build watcher**
 ```bash
@@ -44,7 +46,9 @@ Before submitting a pull request:
 npm run test:e2e
 ```
 
-2. Manually test in the browser at http://localhost:8889
+The test run boots its own Playground instance on a port between 9400 and 9499, picked from the checkout path so separate worktrees do not collide. Set `WP_PLAYGROUND_PORT` to choose the port, or set `WP_BASE_URL` to run against a server that is already running.
+
+2. Manually test in the browser at http://127.0.0.1:9400 (after `npm run playground:start`)
 
 ### Building
 
