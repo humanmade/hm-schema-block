@@ -30,6 +30,7 @@ if ( file_exists( __DIR__ . '/vendor/autoload.php' ) ) {
 require_once __DIR__ . '/inc/namespace.php';
 require_once __DIR__ . '/inc/schema-types.php';
 require_once __DIR__ . '/inc/block-values.php';
+require_once __DIR__ . '/inc/dynamic-values.php';
 require_once __DIR__ . '/inc/block-extensions.php';
 require_once __DIR__ . '/inc/schema-output.php';
 

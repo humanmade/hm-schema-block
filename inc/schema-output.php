@@ -13,6 +13,7 @@ namespace SchemaOrgBlocks\SchemaOutput;
 
 use SchemaOrgBlocks\BlockExtensions;
 use SchemaOrgBlocks\BlockValues;
+use WP_Block;
 use WP_Post;
 
 /**
@@ -20,7 +21,7 @@ use WP_Post;
  */
 function init() : void {
 	add_filter( 'template_include', __NAMESPACE__ . '\\start_collecting', PHP_INT_MAX );
-	add_filter( 'render_block', __NAMESPACE__ . '\\collect_rendered_block', 10, 2 );
+	add_filter( 'render_block', __NAMESPACE__ . '\\collect_rendered_block', 10, 3 );
 
 	if ( is_yoast_seo_active() ) {
 		add_filter( 'wpseo_schema_graph', __NAMESPACE__ . '\\add_to_yoast_graph' );
@@ -124,7 +125,7 @@ function start_collecting( $template ) {
 	$post = is_singular() ? get_queried_object() : null;
 
 	if ( $post instanceof WP_Post && has_blocks( $post ) && ! post_password_required( $post ) ) {
-		add_objects( BlockExtensions\extract_schema( parse_blocks( $post->post_content ) ) );
+		add_objects( BlockExtensions\extract_schema( parse_blocks( $post->post_content ), [ 'postId' => $post->ID ] ) );
 	}
 
 	return $template;
@@ -139,9 +140,10 @@ function start_collecting( $template ) {
  *
  * @param string               $block_content Rendered block content.
  * @param array<string, mixed> $block         Parsed block.
+ * @param WP_Block|null        $instance      Block instance, which carries the block context.
  * @return string
  */
-function collect_rendered_block( $block_content, $block ) {
+function collect_rendered_block( $block_content, $block, $instance = null ) {
 	if ( ! state()['collecting'] || ! is_array( $block ) || doing_filter( 'get_the_excerpt' ) ) {
 		return $block_content;
 	}
@@ -150,16 +152,15 @@ function collect_rendered_block( $block_content, $block ) {
 		return $block_content;
 	}
 
+	$context = $instance instanceof WP_Block ? $instance->context : [];
+
 	if ( BlockExtensions\is_hidden( $block ) ) {
-		remove_objects( BlockExtensions\extract_schema( BlockValues\get_inner_blocks( $block ) ) );
+		remove_objects( BlockExtensions\extract_schema( BlockValues\get_inner_blocks( $block ), BlockExtensions\get_inner_context( $block, $context ) ) );
 		return $block_content;
 	}
 
 	if ( BlockExtensions\is_entity( $block ) ) {
-		$object = BlockExtensions\build_schema_object( $block );
-		if ( $object ) {
-			add_objects( [ $object ] );
-		}
+		add_objects( BlockExtensions\build_entities( $block, $context ) );
 	}
 
 	return $block_content;

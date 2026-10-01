@@ -2,13 +2,21 @@
 /**
  * Block extensions for schema.org mapping, and building schema objects from blocks.
  *
+ * A typed block is an entity. Its properties come from its own mappings and from property
+ * blocks below it: inner blocks marked as properties, found through any untyped container
+ * blocks in between. A typed block inside another typed block is a separate entity unless it
+ * is marked as a property. A typed post template gives one entity per post in its query.
+ *
  * @package SchemaOrgBlocks
  */
 
 namespace SchemaOrgBlocks\BlockExtensions;
 
 use SchemaOrgBlocks\BlockValues;
+use SchemaOrgBlocks\DynamicValues;
 use SchemaOrgBlocks\SchemaTypes;
+use WP_Block;
+use WP_Query;
 
 /**
  * Schema.org data types. Properties that accept one of these take plain values.
@@ -16,11 +24,10 @@ use SchemaOrgBlocks\SchemaTypes;
 const DATA_TYPES = [ 'Text', 'URL', 'Number', 'Integer', 'Float', 'Boolean', 'Date', 'DateTime', 'Time', 'Duration' ];
 
 /**
- * Register the schemaOrg attribute and context on every block type.
+ * Register the schemaOrg attribute on every block type.
  */
-function register_block_context() : void {
+function register_block_attribute() : void {
 	add_filter( 'register_block_type_args', __NAMESPACE__ . '\\add_schema_org_attribute', 10, 2 );
-	add_filter( 'register_block_type_args', __NAMESPACE__ . '\\add_block_context', 10, 2 );
 }
 
 /**
@@ -44,36 +51,25 @@ function add_schema_org_attribute( array $args, string $block_name ) : array {
 }
 
 /**
- * Add block context support for schema.org types.
- *
- * @param array<string, mixed> $args       Block type registration args.
- * @param string               $block_name Block name.
- * @return array<string, mixed>
- */
-function add_block_context( array $args, string $block_name ) : array {
-	$args['provides_context']                   = $args['provides_context'] ?? [];
-	$args['provides_context']['schemaOrg/type'] = 'schemaOrg';
-
-	$args['uses_context'] = array_values( array_unique( array_merge( $args['uses_context'] ?? [], [ 'schemaOrg/type' ] ) ) );
-
-	return $args;
-}
-
-/**
  * Get a block's schemaOrg configuration with every key present and typed.
  *
+ * `id` names a site-wide entity, output as `@id` home URL + `#id`, so other entities can
+ * refer to it with a `reference` mapping.
+ *
  * @param array<string, mixed> $block Parsed block.
- * @return array{type: ?string, mappings: array<string, mixed>, isProperty: bool, propertyName: ?string}
+ * @return array{type: ?string, mappings: array<string, mixed>, isProperty: bool, propertyName: ?string, id: ?string}
  */
 function get_config( array $block ) : array {
 	$config = $block['attrs']['schemaOrg'] ?? [];
 	$config = is_array( $config ) ? $config : [];
+	$id     = sanitize_key( (string) ( $config['id'] ?? '' ) );
 
 	return [
 		'type'         => is_string( $config['type'] ?? null ) && '' !== $config['type'] ? $config['type'] : null,
 		'mappings'     => is_array( $config['mappings'] ?? null ) ? $config['mappings'] : [],
 		'isProperty'   => ! empty( $config['isProperty'] ),
 		'propertyName' => is_string( $config['propertyName'] ?? null ) && '' !== $config['propertyName'] ? $config['propertyName'] : null,
+		'id'           => '' === $id ? null : $id,
 	];
 }
 
@@ -99,12 +95,39 @@ function is_entity( array $block ) : bool {
 }
 
 /**
+ * Get the `@id` URL for a site-wide entity id.
+ *
+ * @param string $id Entity id, e.g. `organization`.
+ * @return string
+ */
+function get_entity_id_url( string $id ) : string {
+	return home_url( '/#' . sanitize_key( $id ) );
+}
+
+/**
+ * Add what a block passes on to its inner blocks to the context: a query block's query.
+ *
+ * @param array<string, mixed> $block   Parsed block.
+ * @param array<string, mixed> $context Context the block received.
+ * @return array<string, mixed> Context for its inner blocks.
+ */
+function get_inner_context( array $block, array $context ) : array {
+	if ( 'core/query' === ( $block['blockName'] ?? '' ) ) {
+		$context['query']   = $block['attrs']['query'] ?? [];
+		$context['queryId'] = $block['attrs']['queryId'] ?? null;
+	}
+
+	return $context;
+}
+
+/**
  * Build schema objects for every standalone typed block in a parsed block tree.
  *
- * @param array<int, array<string, mixed>> $blocks Parsed blocks.
+ * @param array<int, array<string, mixed>> $blocks  Parsed blocks.
+ * @param array<string, mixed>             $context Block context, e.g. `postId`.
  * @return array<int, array<string, mixed>>
  */
-function extract_schema( array $blocks ) : array {
+function extract_schema( array $blocks, array $context = [] ) : array {
 	$schema = [];
 
 	foreach ( $blocks as $block ) {
@@ -113,29 +136,98 @@ function extract_schema( array $blocks ) : array {
 		}
 
 		if ( is_entity( $block ) ) {
-			$object = build_schema_object( $block );
-			if ( $object ) {
-				$schema[] = $object;
-			}
+			$schema = array_merge( $schema, build_entities( $block, $context ) );
 		}
 
-		$schema = array_merge( $schema, extract_schema( BlockValues\get_inner_blocks( $block ) ) );
+		$schema = array_merge( $schema, extract_schema( BlockValues\get_inner_blocks( $block ), get_inner_context( $block, $context ) ) );
 	}
 
 	return $schema;
 }
 
 /**
+ * Build the schema objects of a standalone typed block.
+ *
+ * A post template gives one object per post in its query; other blocks give one object.
+ *
+ * @param array<string, mixed> $block   Parsed block.
+ * @param array<string, mixed> $context Block context.
+ * @return array<int, array<string, mixed>>
+ */
+function build_entities( array $block, array $context ) : array {
+	if ( 'core/post-template' === ( $block['blockName'] ?? '' ) ) {
+		return build_post_items( $block, $context );
+	}
+
+	$object = build_schema_object( $block, $context );
+	return $object ? [ $object ] : [];
+}
+
+/**
+ * Build one object per post in a post template's query, each with the post's URL.
+ *
+ * @param array<string, mixed> $block   Parsed core/post-template block with a schema type.
+ * @param array<string, mixed> $context Context holding the query (`query`, `queryId`).
+ * @return array<int, array<string, mixed>>
+ */
+function build_post_items( array $block, array $context ) : array {
+	$items = [];
+
+	foreach ( get_query_post_ids( $block, $context ) as $post_id ) {
+		$object = build_schema_object( $block, array_merge( $context, [ 'postId' => $post_id ] ) );
+
+		if ( ! $object ) {
+			continue;
+		}
+
+		$object['url'] ??= get_permalink( $post_id );
+		$items[]         = $object;
+	}
+
+	return $items;
+}
+
+/**
+ * Get the IDs of the posts a post template shows, running its query block's query.
+ *
+ * @param array<string, mixed> $block   Parsed core/post-template block.
+ * @param array<string, mixed> $context Context holding the query (`query`, `queryId`).
+ * @return array<int, int>
+ */
+function get_query_post_ids( array $block, array $context ) : array {
+	if ( empty( $context['query'] ) || ! is_array( $context['query'] ) ) {
+		return [];
+	}
+
+	if ( ! empty( $context['query']['inherit'] ) ) {
+		global $wp_query;
+		return array_map( 'intval', wp_list_pluck( $wp_query->posts ?? [], 'ID' ) );
+	}
+
+	$page_key = isset( $context['queryId'] ) ? 'query-' . $context['queryId'] . '-page' : 'query-page';
+	$page     = max( 1, absint( wp_unslash( $_GET[ $page_key ] ?? 1 ) ) ); // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- Read-only pagination, as core/post-template does.
+	$instance = new WP_Block( $block, $context );
+	$args     = array_merge( build_query_vars_from_query_block( $instance, $page ), [
+		'fields'        => 'ids',
+		'no_found_rows' => true,
+	] );
+
+	return array_map( 'intval', ( new WP_Query( $args ) )->posts );
+}
+
+/**
  * Build the schema object for a typed block.
  *
- * Values come from the block's own mappings, then from direct inner blocks marked as
- * properties. A child with its own type becomes a nested object. Several children for the
- * same property produce an array. Child values replace a mapping for the same property.
+ * Values come from the block's own mappings, then from its property blocks. A property block
+ * with its own type becomes a nested object. Several values for one property produce an
+ * array; for itemListElement each is wrapped in a ListItem with its position. Property block
+ * values replace a mapping for the same property.
  *
- * @param array<string, mixed> $block Parsed block.
+ * @param array<string, mixed> $block   Parsed block.
+ * @param array<string, mixed> $context Block context.
  * @return array<string, mixed> The object, or an empty array when it has no properties.
  */
-function build_schema_object( array $block ) : array {
+function build_schema_object( array $block, array $context = [] ) : array {
 	$config = get_config( $block );
 	$type   = $config['type'];
 
@@ -146,7 +238,7 @@ function build_schema_object( array $block ) : array {
 	$object = [ '@type' => $type ];
 
 	foreach ( $config['mappings'] as $property => $mapping ) {
-		$value = resolve_mapping( $block, is_array( $mapping ) ? $mapping : [] );
+		$value = resolve_mapping( $block, is_array( $mapping ) ? $mapping : [], $context );
 		if ( ! is_empty_value( $value ) ) {
 			$object[ $property ] = coerce_value( $type, $property, $value );
 		}
@@ -154,33 +246,120 @@ function build_schema_object( array $block ) : array {
 
 	$from_children = [];
 
-	foreach ( BlockValues\get_inner_blocks( $block ) as $child ) {
-		$child_config = get_config( $child );
-		$property     = $child_config['propertyName'];
+	foreach ( get_property_blocks( $block, get_inner_context( $block, $context ) ) as [ $child, $child_context ] ) {
+		$property = get_config( $child )['propertyName'];
 
-		if ( ! $child_config['isProperty'] || null === $property || is_hidden( $child ) ) {
-			continue;
-		}
-
-		if ( null === $child_config['type'] ) {
-			$value = get_property_value( $child, $property );
-		} else {
-			// A typed child with nothing mapped falls back to its text, as an object of its type.
-			$value = build_schema_object( $child );
-			$text  = $value ? null : get_property_value( $child, $property );
-			$value = is_empty_value( $text ) ? $value : wrap_value( $child_config['type'], $text );
-		}
-
-		if ( ! is_empty_value( $value ) ) {
+		foreach ( get_property_values( $child, $property, $child_context ) as $value ) {
 			$from_children[ $property ][] = coerce_value( $type, $property, $value );
 		}
 	}
 
 	foreach ( $from_children as $property => $values ) {
-		$object[ $property ] = 1 === count( $values ) ? $values[0] : $values;
+		if ( 'itemListElement' === $property ) {
+			$values = wrap_list_items( $values );
+		}
+
+		$object[ $property ] = 1 === count( $values ) && 'itemListElement' !== $property ? $values[0] : $values;
 	}
 
-	return count( $object ) > 1 ? $object : [];
+	$has_properties = count( $object ) > 1;
+
+	if ( $has_properties && null !== $config['id'] ) {
+		$object = [ '@id' => get_entity_id_url( $config['id'] ) ] + $object;
+	}
+
+	return $has_properties ? $object : [];
+}
+
+/**
+ * Find the property blocks of a typed block, with the context each one receives.
+ *
+ * Walks inner blocks through untyped containers. Stops at typed blocks that are not
+ * properties (separate entities), at property blocks (whose content is their value) and at
+ * untyped post templates (whose content repeats per post).
+ *
+ * @param array<string, mixed> $block   Parsed block.
+ * @param array<string, mixed> $context Context for its inner blocks.
+ * @return array<int, array{0: array<string, mixed>, 1: array<string, mixed>}>
+ */
+function get_property_blocks( array $block, array $context ) : array {
+	$found = [];
+
+	foreach ( BlockValues\get_inner_blocks( $block ) as $child ) {
+		if ( is_hidden( $child ) ) {
+			continue;
+		}
+
+		$config = get_config( $child );
+
+		if ( $config['isProperty'] ) {
+			if ( null !== $config['propertyName'] ) {
+				$found[] = [ $child, $context ];
+			}
+			continue;
+		}
+
+		if ( null !== $config['type'] || 'core/post-template' === ( $child['blockName'] ?? '' ) ) {
+			continue;
+		}
+
+		$found = array_merge( $found, get_property_blocks( $child, get_inner_context( $child, $context ) ) );
+	}
+
+	return $found;
+}
+
+/**
+ * Get the values a property block gives its parent: usually one, one per post for a post template.
+ *
+ * A typed block becomes a nested object; when nothing is mapped it falls back to its text as
+ * an object of its type. An untyped block gives its mapping for the property, or its text.
+ *
+ * @param array<string, mixed> $block    Parsed property block.
+ * @param string               $property Property name.
+ * @param array<string, mixed> $context  Block context.
+ * @return array<int, mixed>
+ */
+function get_property_values( array $block, string $property, array $context ) : array {
+	$type = get_config( $block )['type'];
+
+	if ( null === $type ) {
+		$value = get_property_value( $block, $property, $context );
+		return is_empty_value( $value ) ? [] : [ $value ];
+	}
+
+	if ( 'core/post-template' === ( $block['blockName'] ?? '' ) ) {
+		return build_post_items( $block, $context );
+	}
+
+	$object = build_schema_object( $block, $context );
+	if ( $object ) {
+		return [ $object ];
+	}
+
+	$text = get_property_value( $block, $property, $context );
+	return is_empty_value( $text ) ? [] : [ wrap_value( $type, $text ) ];
+}
+
+/**
+ * Wrap item list values in ListItem objects with their position.
+ *
+ * @param array<int, mixed> $values Values.
+ * @return array<int, array<string, mixed>>
+ */
+function wrap_list_items( array $values ) : array {
+	$items = [];
+
+	foreach ( array_values( $values ) as $index => $value ) {
+		$is_list_item = is_array( $value ) && 'ListItem' === ( $value['@type'] ?? '' );
+		$items[]      = $is_list_item ? $value : [
+			'@type'    => 'ListItem',
+			'position' => $index + 1,
+			'item'     => $value,
+		];
+	}
+
+	return $items;
 }
 
 /**
@@ -190,71 +369,74 @@ function build_schema_object( array $block ) : array {
  *
  * @param array<string, mixed> $block    Parsed block.
  * @param string               $property Property name.
- * @return string|int|float|bool|null
+ * @param array<string, mixed> $context  Block context.
+ * @return mixed
  */
-function get_property_value( array $block, string $property ) {
+function get_property_value( array $block, string $property, array $context = [] ) {
 	$mapping = get_config( $block )['mappings'][ $property ] ?? null;
 
 	if ( is_array( $mapping ) ) {
-		return resolve_mapping( $block, $mapping );
+		return resolve_mapping( $block, $mapping, $context );
 	}
 
-	return BlockValues\get_text( BlockValues\get_html( $block ) );
+	return get_block_text( $block, $context );
+}
+
+/**
+ * Get the text a block shows: the value of a dynamic block such as post title, or its markup's text.
+ *
+ * @param array<string, mixed> $block   Parsed block.
+ * @param array<string, mixed> $context Block context.
+ * @return string|null
+ */
+function get_block_text( array $block, array $context ) : ?string {
+	return DynamicValues\get_value( $block, $context ) ?? BlockValues\get_text( BlockValues\get_html( $block ) );
 }
 
 /**
  * Resolve a property mapping against a block.
  *
- * Sources: `attribute` (a block attribute; with no attribute name, the block's text),
- * `content` (the block's text), `innerBlocks` (the text of its inner blocks only, e.g. a
- * details block without its summary) and `post` (a field of the current post: `title` or `url`).
+ * Sources:
+ * - `attribute`: a block attribute (`attributeName`); with no attribute name, the block's text.
+ * - `content`: the block's text, or a dynamic block's value.
+ * - `innerBlocks`: the text of its inner blocks only, e.g. a details block without its summary.
+ * - `post`: a field of the post in context (`field`: title, url, date, modified, excerpt, author, image).
+ * - `site`: a field of the site (`field`: name, description, url, logo).
+ * - `reference`: a link to a site-wide entity by its id (`id`), e.g. the header's Organization.
  *
  * @param array<string, mixed> $block   Parsed block.
  * @param array<string, mixed> $mapping Mapping, e.g. [ 'source' => 'attribute', 'attributeName' => 'url' ].
- * @return string|int|float|bool|null
+ * @param array<string, mixed> $context Block context.
+ * @return mixed
  */
-function resolve_mapping( array $block, array $mapping ) {
+function resolve_mapping( array $block, array $mapping, array $context = [] ) {
 	$source         = $mapping['source'] ?? '';
 	$attribute_name = $mapping['attributeName'] ?? '';
 
-	if ( 'attribute' === $source && is_string( $attribute_name ) && '' !== $attribute_name ) {
-		return BlockValues\get_attribute( $block, $attribute_name );
-	}
+	switch ( $source ) {
+		case 'attribute':
+			if ( is_string( $attribute_name ) && '' !== $attribute_name ) {
+				return BlockValues\get_attribute( $block, $attribute_name );
+			}
+			return get_block_text( $block, $context );
 
-	if ( 'attribute' === $source || 'content' === $source ) {
-		return BlockValues\get_text( BlockValues\get_html( $block ) );
-	}
+		case 'content':
+			return get_block_text( $block, $context );
 
-	if ( 'innerBlocks' === $source ) {
-		$html = array_map( 'SchemaOrgBlocks\\BlockValues\\get_html', BlockValues\get_inner_blocks( $block ) );
-		return BlockValues\get_text( implode( "\n", $html ) );
-	}
+		case 'innerBlocks':
+			$html = array_map( 'SchemaOrgBlocks\\BlockValues\\get_html', BlockValues\get_inner_blocks( $block ) );
+			return BlockValues\get_text( implode( "\n", $html ) );
 
-	if ( 'post' === $source ) {
-		return get_post_field_value( (string) ( $mapping['field'] ?? 'title' ) );
-	}
+		case 'post':
+			$post = get_post( DynamicValues\get_post_id( $context ) );
+			return $post ? DynamicValues\get_post_field( (string) ( $mapping['field'] ?? 'title' ), $post ) : null;
 
-	return null;
-}
+		case 'site':
+			return DynamicValues\get_site_field( (string) ( $mapping['field'] ?? 'name' ) );
 
-/**
- * Get a field of the current post for a `post` mapping.
- *
- * @param string $field `title` or `url`.
- * @return string|null
- */
-function get_post_field_value( string $field ) : ?string {
-	$post = get_post();
-
-	if ( ! $post ) {
-		return null;
-	}
-
-	switch ( $field ) {
-		case 'title':
-			return BlockValues\get_text( get_the_title( $post ) );
-		case 'url':
-			return get_permalink( $post ) ?: null;
+		case 'reference':
+			$id = sanitize_key( (string) ( $mapping['id'] ?? '' ) );
+			return '' === $id ? null : [ '@id' => get_entity_id_url( $id ) ];
 	}
 
 	return null;

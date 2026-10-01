@@ -252,12 +252,16 @@ function get_html( array $block ) : string {
 }
 
 /**
- * Get a block's inner blocks, resolving synced patterns to the pattern's blocks.
+ * Get a block's inner blocks, resolving synced patterns and template parts to their blocks.
  *
  * @param array<string, mixed> $block Parsed block.
  * @return array<int, array<string, mixed>>
  */
 function get_inner_blocks( array $block ) : array {
+	if ( 'core/template-part' === ( $block['blockName'] ?? '' ) ) {
+		return get_template_part_blocks( $block );
+	}
+
 	if ( 'core/block' !== ( $block['blockName'] ?? '' ) ) {
 		return $block['innerBlocks'] ?? [];
 	}
@@ -305,4 +309,30 @@ function tag_pattern_refs( array $blocks, array $refs ) : array {
 	}
 
 	return $blocks;
+}
+
+/**
+ * Get the parsed blocks of the template part a core/template-part block shows.
+ *
+ * @param array<string, mixed> $block Parsed core/template-part block.
+ * @return array<int, array<string, mixed>>
+ */
+function get_template_part_blocks( array $block ) : array {
+	static $parsed = [];
+
+	$slug  = sanitize_key( (string) ( $block['attrs']['slug'] ?? '' ) );
+	$theme = (string) ( $block['attrs']['theme'] ?? get_stylesheet() );
+
+	if ( '' === $slug ) {
+		return [];
+	}
+
+	$key = $theme . '//' . $slug;
+
+	if ( ! isset( $parsed[ $key ] ) ) {
+		$template       = get_block_template( $key, 'wp_template_part' );
+		$parsed[ $key ] = $template && $template->content ? parse_blocks( $template->content ) : [];
+	}
+
+	return $parsed[ $key ];
 }
