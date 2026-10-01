@@ -13,7 +13,7 @@ namespace SchemaOrgBlocks\SchemaOutput;
  */
 function init() : void {
 	if ( is_yoast_seo_active() ) {
-		add_filter( 'wpseo_schema_graph_pieces', __NAMESPACE__ . '\\add_to_yoast_schema', 10, 2 );
+		add_filter( 'wpseo_schema_graph', __NAMESPACE__ . '\\add_to_yoast_graph' );
 	} else {
 		add_action( 'wp_head', __NAMESPACE__ . '\\output_json_ld', 1 );
 	}
@@ -224,27 +224,15 @@ function is_yoast_seo_active() : bool {
 }
 
 /**
- * Add schema data to Yoast SEO's schema graph.
+ * Add the collected schema objects to Yoast SEO's graph.
  *
- * @param array<int, mixed> $pieces Schema graph pieces.
- * @param mixed            $context Context.
+ * @param array<int, mixed> $graph Yoast schema graph nodes.
  * @return array<int, mixed>
  */
-function add_to_yoast_schema( array $pieces, $context ) : array {
+function add_to_yoast_graph( $graph ) : array {
 	global $schema_org_blocks_data;
 
-	if ( empty( $schema_org_blocks_data ) ) {
-		return $pieces;
-	}
-
-	foreach ( $schema_org_blocks_data as $schema_data ) {
-		if ( ! empty( $schema_data ) ) {
-			$schema_data['@context'] = 'https://schema.org';
-			$pieces[]                = $schema_data;
-		}
-	}
-
-	return $pieces;
+	return array_merge( is_array( $graph ) ? $graph : [], array_values( array_filter( (array) $schema_org_blocks_data ) ) );
 }
 
 /**
