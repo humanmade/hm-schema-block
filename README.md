@@ -38,11 +38,11 @@ npm run build
 
 ## Development
 
-### Local Development with wp-env
+### Local Development with WordPress Playground
 
 Start the development environment:
 ```bash
-npm run env:start
+npm run playground:start
 ```
 
 Start the build watcher:
@@ -50,7 +50,7 @@ Start the build watcher:
 npm start
 ```
 
-Access your development site at http://localhost:8888
+Access your development site at http://127.0.0.1:9400. You are logged in as `admin` (password `password`) and the plugin is already active.
 
 ### Testing
 
@@ -58,6 +58,8 @@ Run Playwright e2e tests:
 ```bash
 npm run test:e2e
 ```
+
+The tests start their own Playground instance on a port between 9400 and 9499, based on the checkout path, so worktrees can run in parallel. Set `WP_PLAYGROUND_PORT` to pick the port, or `WP_BASE_URL` to use a server you already started.
 
 Watch mode for tests:
 ```bash

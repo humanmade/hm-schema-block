@@ -151,14 +151,14 @@ npm start               # watch mode
 
 # Linting
 npm run lint:js         # ESLint via wp-scripts
-npm run format:js       # auto-format JS
+npm run format          # auto-format JS
 
-# Local environment (wp-env, port 8888)
-npm run env:start
-npm run env:stop
+# Local environment (WordPress Playground, http://127.0.0.1:9400, Ctrl+C to stop)
+npm run playground:start
 
-# E2E tests (Playwright, runs against port 8889)
-npm run test:e2e
+# E2E tests (Playwright; global-setup.js boots its own Playground on a per-worktree port 9400–9499)
+npm run test:e2e                       # override the port with WP_PLAYGROUND_PORT
+WP_BASE_URL=http://127.0.0.1:9400 npm run test:e2e   # reuse a running server
 npm run test:e2e:watch
 
 # PHP linting (requires composer install)

@@ -13,7 +13,7 @@ composer install
 npm run build
 
 # Start local development environment (optional)
-npm run env:start
+npm run playground:start
 ```
 
 ## Basic Usage
@@ -144,13 +144,13 @@ Use these tools to validate:
 
 Start development environment:
 ```bash
-npm run env:start  # Start wp-env
-npm start         # Watch and rebuild on changes
+npm run playground:start  # Start WordPress Playground
+npm start                 # Watch and rebuild on changes
 ```
 
-Visit: http://localhost:8889
+Visit: http://127.0.0.1:9400
 
-Run tests:
+Run tests (they boot their own Playground on a port between 9400 and 9499; set `WP_PLAYGROUND_PORT` to change it or `WP_BASE_URL` to reuse a running server):
 ```bash
 npm run test:e2e
 ```

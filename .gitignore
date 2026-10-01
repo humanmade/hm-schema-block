@@ -6,3 +6,4 @@ build/
 test-results/
 playwright-report/
 .auth/
+artifacts/
