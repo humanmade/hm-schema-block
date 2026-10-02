@@ -21,7 +21,7 @@ The plugin turns a `schemaOrg` attribute on any block into JSON-LD in `wp_head` 
 
 - `type`: a schema.org type. A typed block that is not a property is an **entity** and becomes a node in the graph.
 - `isProperty` + `propertyName`: the block is a value of its nearest typed ancestor. Add `type` too to make it a nested object (e.g. `Question` as `mainEntity`).
-- `mappings`: property → source on the block itself. Sources: `attribute` (`attributeName`, also reads attributes stored in markup such as image `url`), `content` (the block's text, or a dynamic block's value), `innerBlocks` (text of inner blocks only), `post` (`field`: title, url, date, modified, excerpt, author, image), `site` (`field`: name, description, url, logo), `reference` (`id`: links to a site entity as `{"@id": …}`).
+- `mappings`: property → source on the block itself. Sources: `attribute` (`attributeName`, also reads attributes stored in markup such as image `url`), `content` (the block's text, or a dynamic block's value), `innerBlocks` (text of inner blocks only), `post` (`field`: title, url, date, modified, excerpt, author (a Person), image), `site` (`field`: name, description, url, logo, language), `reference` (`id`: links to any entity with that `id` as `{"@id": …}`).
 - `id`: names a site-wide entity. It is output as `@id` = home URL + `#id`. Use `organization` for the publisher and `website` for the site, the same ids Yoast SEO uses.
 
 ## How the graph is built
@@ -33,7 +33,8 @@ The plugin turns a `schemaOrg` attribute on any block into JSON-LD in `wp_head` 
 5. A typed `core/post-template` gives one entity per post in its query, each with the post's `url`. As `itemListElement` of an `ItemList`, items become `ListItem`s with a `position`. As `blogPost` of a `Blog`, they stay `BlogPosting`s.
 6. An entity inside another entity's blocks is nested under the outer one's `contains` property: `hasPart` by default for creative works, or set `"contains": "mainEntity"` (or `""` to turn it off). `core/post-content` counts as the post's blocks, so a typed group around post content in a template contains the post's FAQ or how-to.
 7. References to `#website` or `#organization` that no block defines are filled from the site settings (not with Yoast active, which outputs them itself).
-8. Hidden blocks, password-protected content, excerpts, and other posts' full content inside query loops are left out.
+8. An entity nested more than once (e.g. one author on every post of a list) is output once with an `@id` and referenced elsewhere. Authors get Yoast's Person `@id`. Nothing is copied from outer entities to inner ones; link shared things with a `reference` mapping and map `inLanguage` from the `site` `language` field where wanted.
+9. Hidden blocks, password-protected content, excerpts, and other posts' full content inside query loops are left out.
 
 ## Recipes
 

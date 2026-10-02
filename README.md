@@ -261,6 +261,10 @@ The "Web page" Quick setup on a group types it `WebPage` with `@id` and `url` fr
 
 When the graph refers to `#website` or `#organization` and no block defines them, the plugin adds WebSite and Organization nodes built from the site settings. With Yoast SEO active it leaves that to Yoast.
 
+An entity nested more than once, such as the same author on every post in a list, is output once as a top-level node and referenced by `{"@id": …}` everywhere else. Author blocks give a Person with the `@id` Yoast uses for the same user (`#/schema/person/<hash>`) and the author archive as `url`. Values are not copied down from outer entities to nested ones: schema.org and search engines don't infer them, so shared things are linked by `@id` instead, and the page language is mapped explicitly (`inLanguage` from the site language on the Web page and Article presets).
+
+Typed blocks show a Graph section in the inspector, in the post editor and the site editor: **Entity ID** names the entity for `@id` links, and **Nest inner entities as** picks the default, none, or any property that takes entities. A mapping's Source can link to the site Organization, the site Web site, or any Entity ID.
+
 ### Patterns
 
 The plugin adds a **Schema.org** block pattern category with seven patterns:
