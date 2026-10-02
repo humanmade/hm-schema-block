@@ -63,7 +63,7 @@ Run Playwright e2e tests:
 npm run test:e2e
 ```
 
-The tests start their own Playground instance on a port between 9400 and 9499, based on the checkout path, so worktrees can run in parallel. Set `WP_PLAYGROUND_PORT` to pick the port, or `WP_BASE_URL` to use a server you already started.
+The tests start their own Playground instance on a free port the system picks, so any number of runs can go at once, in one checkout or many. Each run saves its own login under `artifacts/storage-states/`. Give parallel runs in the same checkout their own `--output` folder, because Playwright clears it at the start of a run. Set `WP_PLAYGROUND_PORT` to pick the port, or `WP_BASE_URL` to use a server you already started.
 
 Watch mode for tests:
 ```bash

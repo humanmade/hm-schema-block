@@ -179,7 +179,7 @@ npm start                 # Watch and rebuild on changes
 
 Visit: http://127.0.0.1:9400
 
-Run tests (they boot their own Playground on a port between 9400 and 9499; set `WP_PLAYGROUND_PORT` to change it or `WP_BASE_URL` to reuse a running server):
+Run tests (they boot their own Playground on a free port; set `WP_PLAYGROUND_PORT` to fix the port or `WP_BASE_URL` to reuse a running server):
 ```bash
 npm run test:e2e
 ```

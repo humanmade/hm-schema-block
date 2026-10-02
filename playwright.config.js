@@ -1,5 +1,5 @@
 const { defineConfig, devices } = require( '@playwright/test' );
-const { STORAGE_STATE_PATH } = require( './global-setup' );
+const { getStorageStatePath } = require( './global-setup' );
 
 /**
  * Playground is booted by global-setup.js, which writes the server URL to
@@ -24,7 +24,7 @@ module.exports = defineConfig( {
 	],
 	use: {
 		baseURL: process.env.WP_BASE_URL,
-		storageState: STORAGE_STATE_PATH,
+		storageState: getStorageStatePath(),
 		trace: 'on-first-retry',
 		screenshot: 'only-on-failure',
 		video: 'retain-on-failure',
