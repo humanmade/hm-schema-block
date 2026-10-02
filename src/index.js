@@ -18,6 +18,7 @@ import { __ } from '@wordpress/i18n';
 import SchemaTypeSelector from './components/SchemaTypeSelector';
 import AttributeMappingControls from './components/AttributeMappingControls';
 import SchemaPresets from './components/SchemaPresets';
+import EntityControls from './components/EntityControls';
 import {
 	findParentType,
 	getPropertyCandidates,
@@ -228,6 +229,13 @@ const withSchemaOrgControls = createHigherOrderComponent( ( BlockEdit ) => {
 								onChange={ ( mappings ) =>
 									updateSchemaOrg( { mappings } )
 								}
+							/>
+						) }
+
+						{ schemaOrg.type && (
+							<EntityControls
+								schemaOrg={ schemaOrg }
+								onChange={ updateSchemaOrg }
 							/>
 						) }
 					</PanelBody>
