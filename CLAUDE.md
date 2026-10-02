@@ -161,6 +161,7 @@ npm run test:e2e                       # override the port with WP_PLAYGROUND_PO
 WP_BASE_URL=http://127.0.0.1:9400 npm run test:e2e   # reuse a running server
 npm run test:e2e:watch
 npm run patterns:generate              # rewrite patterns/*.html from the real editor (opt-in spec)
+npm run demo:record                    # re-record docs/media (demo.mp4, demo.gif, screenshots); needs ffmpeg
 
 # PHP linting (requires composer install)
 composer install
