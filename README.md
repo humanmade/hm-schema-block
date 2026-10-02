@@ -4,7 +4,7 @@ A WordPress plugin that extends all blocks with schema.org type mapping and stru
 
 [![Schema.org Blocks demo: an FAQ block becomes structured data, then a template builds a connected page graph](docs/media/demo.gif)](docs/media/demo.mp4)
 
-[Watch the full demo (MP4, 1 min).](docs/media/demo.mp4)
+[Watch the full demo (MP4, about 1.5 min).](docs/media/demo.mp4)
 
 <a href="https://playground.wordpress.net/?blueprint-url=https://raw.githubusercontent.com/humanmade/hm-schema-block/main/playground-blueprint.json"><img src="https://raw.githubusercontent.com/adamziel/playground-preview/refs/heads/trunk/assets/playground-preview-button.svg" width="224" height="52" alt="Open in WordPress Playground"></a>
 
@@ -24,35 +24,35 @@ A WordPress plugin that extends all blocks with schema.org type mapping and stru
 
 ## Screenshots
 
-![The block inserter searched for "schema", showing the FAQ and How-to blocks](docs/media/screenshots/inserter-faq-howto.png)
+<img src="docs/media/screenshots/inserter-faq-howto.png" width="350" alt="The block inserter searched for &quot;schema&quot;, showing the FAQ and How-to blocks">
 
 Search the inserter for "schema" to find the FAQ and How-to blocks.
 
-![The Schema.org Mapping panel of an FAQ accordion, with the FAQ Quick setup button pressed and the type set to FAQ Page](docs/media/screenshots/faq-quick-setup.png)
+<img src="docs/media/screenshots/faq-quick-setup.png" width="280" alt="The Schema.org Mapping panel of an FAQ accordion, with the FAQ Quick setup button pressed and the type set to FAQ Page">
 
 The FAQ block comes set up as an FAQPage.
 
-![The Schema.org Mapping panel of an accordion item, mapped to the Questions property with the value type Question](docs/media/screenshots/accordion-item-question.png)
+<img src="docs/media/screenshots/accordion-item-question.png" width="280" alt="The Schema.org Mapping panel of an accordion item, mapped to the Questions property with the value type Question">
 
 Each accordion item is a Question, and its panel is the answer.
 
 ![A published post with two questions, next to a panel that shows its FAQPage JSON-LD](docs/media/screenshots/front-end-faq-json-ld.png)
 
-The published post with its FAQPage structured data.
+The published post with its FAQPage structured data (JSON-LD shown in a demo side panel).
 
 ![The site editor with the main group of the single template selected and the Web page Quick setup applied](docs/media/screenshots/site-editor-web-page.png)
 
 In the site editor, the Web page Quick setup types the main group of a template.
 
-![The Entity ID field and the Nest inner entities as menu, set to Main Entity](docs/media/screenshots/graph-controls.png)
+<img src="docs/media/screenshots/graph-controls.png" width="248" alt="The Entity ID field and the Nest inner entities as menu, set to Main Entity">
 
 The graph settings give an entity an ID and choose how it nests the entities inside it.
 
 ![The same post next to its JSON-LD: a WebPage whose main entity is an Article that contains the FAQPage, plus WebSite and Organization nodes](docs/media/screenshots/front-end-page-graph.png)
 
-With a typed template, the page has one connected graph.
+With a typed template, the page has one connected graph (JSON-LD shown in a demo side panel).
 
-![The Schema.org Mapping panel of a Query Loop block, with the Blog and Item list Quick setup buttons](docs/media/screenshots/blog-list-preset.png)
+<img src="docs/media/screenshots/blog-list-preset.png" width="280" alt="The Schema.org Mapping panel of a Query Loop block, with the Blog and Item list Quick setup buttons">
 
 Query Loop blocks offer Blog and Item list presets.
 
