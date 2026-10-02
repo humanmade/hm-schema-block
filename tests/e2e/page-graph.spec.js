@@ -247,3 +247,94 @@ test.describe( 'Template schema that contains the page', () => {
 		] );
 	} );
 } );
+
+test.describe( 'Entities repeated in the graph', () => {
+	test( 'the same author on every post in a list is one Person node', async ( {
+		page,
+		requestUtils,
+	} ) => {
+		const posts = [];
+		for ( const title of [ 'First loaf', 'Second loaf' ] ) {
+			posts.push(
+				await requestUtils.createPost( {
+					title,
+					content:
+						'<!-- wp:paragraph --><p>Bread.</p><!-- /wp:paragraph -->',
+					status: 'publish',
+				} )
+			);
+		}
+		const property = ( propertyName, extra = {} ) => ( {
+			schemaOrg: {
+				type: null,
+				mappings: {},
+				isProperty: true,
+				propertyName,
+				...extra,
+			},
+		} );
+		const list = `<!-- wp:query ${ JSON.stringify( {
+			queryId: 7,
+			query: {
+				perPage: 2,
+				postType: 'post',
+				order: 'desc',
+				orderBy: 'date',
+				inherit: false,
+			},
+			schemaOrg: {
+				type: 'Blog',
+				mappings: {},
+				isProperty: false,
+				propertyName: null,
+			},
+		} ) } --><div class="wp-block-query"><!-- wp:post-template ${ JSON.stringify(
+			{
+				schemaOrg: {
+					type: 'BlogPosting',
+					mappings: {},
+					isProperty: true,
+					propertyName: 'blogPost',
+				},
+			}
+		) } --><!-- wp:post-title ${ JSON.stringify(
+			property( 'headline' )
+		) } /--><!-- wp:post-author-name ${ JSON.stringify(
+			property( 'author' )
+		) } /--><!-- /wp:post-template --></div><!-- /wp:query -->`;
+		const listing = await requestUtils.createPost( {
+			title: 'Latest loaves',
+			content: list,
+			status: 'publish',
+		} );
+
+		try {
+			const graph = graphOf( await getJsonLdAt( page, listing.link ) );
+			const people = graph.filter(
+				( node ) => node[ '@type' ] === 'Person'
+			);
+			expect( people ).toHaveLength( 1 );
+			expect( people[ 0 ] ).toMatchObject( {
+				'@id': expect.stringMatching( /#\/schema\/person\/[a-f0-9]+$/ ),
+				name: expect.any( String ),
+				url: expect.stringMatching( /^https?:\/\// ),
+			} );
+
+			const blog = graph.find( ( node ) => node[ '@type' ] === 'Blog' );
+			expect( blog.blogPost.length ).toBeGreaterThanOrEqual( 2 );
+			for ( const posting of blog.blogPost ) {
+				expect( posting.author ).toEqual( {
+					'@id': people[ 0 ][ '@id' ],
+				} );
+			}
+		} finally {
+			for ( const post of [ ...posts, listing ] ) {
+				await requestUtils.rest( {
+					method: 'DELETE',
+					path: `/wp/v2/posts/${ post.id }`,
+					params: { force: true },
+				} );
+			}
+		}
+	} );
+} );
