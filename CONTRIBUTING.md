@@ -50,6 +50,10 @@ The test run boots its own Playground instance on a free port the system picks, 
 
 2. Manually test in the browser at http://127.0.0.1:9400 (after `npm run playground:start`)
 
+### Demo video and screenshots
+
+The demo video, the README GIF and the screenshots in `docs/media/` come from an opt-in spec. After a UI change, run `npm run build` and then `npm run demo:record` to record them again. It needs ffmpeg on your PATH, takes about three minutes, and overwrites the files in `docs/media/`; check the new video before you commit it.
+
 ### Building
 
 To build production assets:
