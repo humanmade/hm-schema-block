@@ -1,22 +1,41 @@
 const fs = require( 'node:fs' );
 const path = require( 'node:path' );
 const crypto = require( 'node:crypto' );
-
-const STORAGE_STATE_PATH =
-	process.env.STORAGE_STATE_PATH ||
-	path.join( process.cwd(), 'artifacts/storage-states/admin.json' );
+const net = require( 'node:net' );
 
 /**
- * Deterministic port from cwd hash so each git worktree gets its own
- * Playground instance. Override with WP_PLAYGROUND_PORT (e.g. in CI).
- * Range: 9400–9499.
+ * Where the logged-in admin state is saved. Each run started by global setup sets its own
+ * file, named after its port, so runs in the same checkout don't share cookies.
+ *
+ * @return {string} Path.
+ */
+function getStorageStatePath() {
+	return (
+		process.env.STORAGE_STATE_PATH ||
+		path.join( process.cwd(), 'artifacts/storage-states/admin.json' )
+	);
+}
+
+/**
+ * Ask the OS for a free port so any number of runs, in any checkout, can boot Playground at
+ * once. WP_PLAYGROUND_PORT picks a fixed port instead (e.g. in CI).
+ *
+ * @return {Promise<number>} Port.
  */
 function resolvePort() {
 	if ( process.env.WP_PLAYGROUND_PORT ) {
-		return Number( process.env.WP_PLAYGROUND_PORT );
+		return Promise.resolve( Number( process.env.WP_PLAYGROUND_PORT ) );
 	}
-	const hash = crypto.createHash( 'sha1' ).update( process.cwd() ).digest();
-	return 9400 + ( hash.readUInt16BE( 0 ) % 100 );
+
+	return new Promise( ( resolve, reject ) => {
+		const server = net.createServer();
+		server.unref();
+		server.on( 'error', reject );
+		server.listen( 0, '127.0.0.1', () => {
+			const { port } = server.address();
+			server.close( () => resolve( port ) );
+		} );
+	} );
 }
 
 /**
@@ -64,9 +83,19 @@ async function startPlayground() {
 		),
 	];
 
+	const port = await resolvePort();
+
+	if ( ! process.env.STORAGE_STATE_PATH ) {
+		process.env.STORAGE_STATE_PATH = path.join(
+			process.cwd(),
+			'artifacts/storage-states',
+			`admin-${ port }.json`
+		);
+	}
+
 	const options = {
 		command: 'server',
-		port: resolvePort(),
+		port,
 		php,
 		wp,
 		autoMount: process.cwd(),
@@ -100,7 +129,7 @@ async function setUpAdmin() {
 
 	const requestUtils = await RequestUtils.setup( {
 		baseURL: process.env.WP_BASE_URL,
-		storageStatePath: STORAGE_STATE_PATH,
+		storageStatePath: getStorageStatePath(),
 	} );
 	await requestUtils.setupRest();
 
@@ -137,4 +166,4 @@ module.exports = async () => {
 	await setUpAdmin();
 };
 
-module.exports.STORAGE_STATE_PATH = STORAGE_STATE_PATH;
+module.exports.getStorageStatePath = getStorageStatePath;

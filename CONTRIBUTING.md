@@ -46,7 +46,7 @@ Before submitting a pull request:
 npm run test:e2e
 ```
 
-The test run boots its own Playground instance on a port between 9400 and 9499, picked from the checkout path so separate worktrees do not collide. Set `WP_PLAYGROUND_PORT` to choose the port, or set `WP_BASE_URL` to run against a server that is already running.
+The test run boots its own Playground instance on a free port the system picks, so parallel runs never collide, even in the same checkout. Give each parallel run in one checkout its own `--output` folder. Set `WP_PLAYGROUND_PORT` to choose the port, or set `WP_BASE_URL` to run against a server that is already running.
 
 2. Manually test in the browser at http://127.0.0.1:9400 (after `npm run playground:start`)
 
