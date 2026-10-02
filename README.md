@@ -248,6 +248,23 @@ Another entity links to it with a `reference` mapping, or **Link to site Organiz
 }
 ```
 
+### Page graph
+
+Template entities contain the entities on the page. An entity inside another entity's blocks is nested under the outer one's `contains` property, `hasPart` by default for creative works. `core/post-content` resolves to the post's blocks, so a typed group around post content in the single template contains the FAQ or how-to in each post. Set `"contains": ""` on a block to keep inner entities as separate nodes.
+
+The "Web page" Quick setup on a group types it `WebPage` with `@id` and `url` from the permalink (the same `@id` Yoast gives its WebPage), `name` from the post title, `isPartOf` the site, and `contains: mainEntity`. Use it on the template's main group, with an `Article` group inside around the post title and post content:
+
+```json
+{ "@type": "WebPage", "@id": "https://example.com/bread/", "isPartOf": { "@id": "https://example.com/#website" },
+  "mainEntity": { "@type": "Article", "headline": "Bread", "hasPart": { "@type": "FAQPage", "mainEntity": [ … ] } } }
+```
+
+When the graph refers to `#website` or `#organization` and no block defines them, the plugin adds WebSite and Organization nodes built from the site settings. With Yoast SEO active it leaves that to Yoast.
+
+An entity nested more than once, such as the same author on every post in a list, is output once as a top-level node and referenced by `{"@id": …}` everywhere else. Author blocks give a Person with the `@id` Yoast uses for the same user (`#/schema/person/<hash>`) and the author archive as `url`. Values are not copied down from outer entities to nested ones: schema.org and search engines don't infer them, so shared things are linked by `@id` instead, and the page language is mapped explicitly (`inLanguage` from the site language on the Web page and Article presets).
+
+Typed blocks show a Graph section in the inspector, in the post editor and the site editor: **Entity ID** names the entity for `@id` links, and **Nest inner entities as** picks the default, none, or any property that takes entities. A mapping's Source can link to the site Organization, the site Web site, or any Entity ID.
+
 ### Patterns
 
 The plugin adds a **Schema.org** block pattern category with seven patterns:

@@ -61,6 +61,45 @@ function get_value( array $block, array $context ) : ?string {
 }
 
 /**
+ * Get the object a dynamic block stands for, when it is richer than its text.
+ *
+ * Author blocks give the post author as a Person.
+ *
+ * @param array<string, mixed> $block   Parsed block.
+ * @param array<string, mixed> $context Block context.
+ * @return array<string, mixed>|null
+ */
+function get_object( array $block, array $context ) : ?array {
+	if ( ! in_array( $block['blockName'] ?? '', [ 'core/post-author', 'core/post-author-name' ], true ) ) {
+		return null;
+	}
+
+	$post = get_post( get_post_id( $context ) );
+	return $post instanceof WP_Post ? get_author_person( $post ) : null;
+}
+
+/**
+ * Get a post's author as a Person, with the @id Yoast SEO uses for the same user.
+ *
+ * @param WP_Post $post Post.
+ * @return array<string, mixed>|null
+ */
+function get_author_person( WP_Post $post ) : ?array {
+	$user = get_userdata( (int) $post->post_author );
+
+	if ( ! $user ) {
+		return null;
+	}
+
+	return [
+		'@type' => 'Person',
+		'@id'   => home_url( '/' ) . '#/schema/person/' . wp_hash( $user->user_login . $user->ID ),
+		'name'  => text( $user->display_name ),
+		'url'   => get_author_posts_url( $user->ID ),
+	];
+}
+
+/**
  * Get the post ID from block context, falling back to the current post.
  *
  * @param array<string, mixed> $context Block context.
@@ -101,7 +140,7 @@ function get_post_field( string $field, WP_Post $post ) : ?string {
 /**
  * Get a field of the site.
  *
- * @param string $field `name`, `description`, `url` or `logo` (custom logo URL).
+ * @param string $field `name`, `description`, `url`, `logo` (custom logo URL) or `language` (BCP 47 code).
  * @return string|null
  */
 function get_site_field( string $field ) : ?string {
@@ -112,6 +151,8 @@ function get_site_field( string $field ) : ?string {
 			return text( get_bloginfo( 'description' ) );
 		case 'url':
 			return home_url( '/' );
+		case 'language':
+			return get_bloginfo( 'language' ) ?: null;
 		case 'logo':
 			$logo_id = (int) get_theme_mod( 'custom_logo', get_option( 'site_logo' ) );
 			return $logo_id ? ( wp_get_attachment_image_url( $logo_id, 'full' ) ?: null ) : null;

@@ -227,14 +227,17 @@ function normalize_whitespace( string $text ) : string {
 /**
  * Get a block's saved markup including the markup of its inner blocks.
  *
- * Synced patterns (core/block) are replaced by the markup of the pattern's blocks.
+ * Synced patterns (core/block) and post content (core/post-content, for the current post) are
+ * replaced by the markup of their blocks.
  *
- * @param array<string, mixed> $block Parsed block.
+ * @param array<string, mixed> $block   Parsed block.
+ * @param array<string, mixed> $context Block context; `postId` picks the post for core/post-content.
  * @return string
  */
-function get_html( array $block ) : string {
-	if ( 'core/block' === ( $block['blockName'] ?? '' ) ) {
-		return implode( "\n", array_map( __NAMESPACE__ . '\\get_html', get_inner_blocks( $block ) ) );
+function get_html( array $block, array $context = [] ) : string {
+	if ( in_array( $block['blockName'] ?? '', [ 'core/block', 'core/post-content' ], true ) ) {
+		$inner = get_inner_blocks( $block, $context );
+		return implode( "\n", array_map( static fn ( $child ) => get_html( $child, $context ), $inner ) );
 	}
 
 	$html  = '';
@@ -244,7 +247,7 @@ function get_html( array $block ) : string {
 		if ( is_string( $chunk ) ) {
 			$html .= $chunk;
 		} elseif ( isset( $block['innerBlocks'][ $index ] ) ) {
-			$html .= get_html( $block['innerBlocks'][ $index++ ] );
+			$html .= get_html( $block['innerBlocks'][ $index++ ], $context );
 		}
 	}
 
@@ -252,27 +255,53 @@ function get_html( array $block ) : string {
 }
 
 /**
- * Get a block's inner blocks, resolving synced patterns and template parts to their blocks.
+ * Get a block's inner blocks, resolving synced patterns, template parts and post content to their blocks.
  *
- * @param array<string, mixed> $block Parsed block.
+ * @param array<string, mixed> $block   Parsed block.
+ * @param array<string, mixed> $context Block context; `postId` picks the post for core/post-content.
  * @return array<int, array<string, mixed>>
  */
-function get_inner_blocks( array $block ) : array {
+function get_inner_blocks( array $block, array $context = [] ) : array {
 	if ( 'core/template-part' === ( $block['blockName'] ?? '' ) ) {
-		return get_template_part_blocks( $block );
+		$theme = (string) ( $block['attrs']['theme'] ?? get_stylesheet() );
+		$slug  = sanitize_key( (string) ( $block['attrs']['slug'] ?? '' ) );
+		return resolve_once( $block, 'part:' . $theme . '//' . $slug, fn () => get_template_part_blocks( $theme, $slug ) );
+	}
+
+	if ( 'core/post-content' === ( $block['blockName'] ?? '' ) ) {
+		$post_id = (int) ( $context['postId'] ?? get_the_ID() );
+		return resolve_once( $block, 'post:' . $post_id, fn () => get_post_content_blocks( $post_id ) );
 	}
 
 	if ( 'core/block' !== ( $block['blockName'] ?? '' ) ) {
 		return $block['innerBlocks'] ?? [];
 	}
 
-	$ref       = (int) ( $block['attrs']['ref'] ?? 0 );
-	$ancestors = $block['schemaOrgPatternRefs'] ?? [];
-	if ( ! $ref || in_array( $ref, $ancestors, true ) ) {
+	$ref = (int) ( $block['attrs']['ref'] ?? 0 );
+	return resolve_once( $block, 'pattern:' . $ref, fn () => get_pattern_blocks( $ref ) );
+}
+
+/**
+ * Resolve the blocks a reference block points to, unless the block is already inside them.
+ *
+ * Every resolved block records the chain of references it came through, across synced
+ * patterns, template parts and post content, so any cycle between them stops.
+ *
+ * @param array<string, mixed> $block   Reference block.
+ * @param string               $key     What it points to, e.g. `post:12`.
+ * @param callable             $resolve Returns the parsed blocks.
+ * @return array<int, array<string, mixed>>
+ */
+function resolve_once( array $block, string $key, callable $resolve ) : array {
+	$ancestors = $block['schemaOrgRefs'] ?? [];
+
+	$is_empty = 1 === preg_match( '#^(post|pattern):0$|^part:.*//$#', $key );
+
+	if ( $is_empty || in_array( $key, $ancestors, true ) ) {
 		return [];
 	}
 
-	return tag_pattern_refs( get_pattern_blocks( $ref ), array_merge( $ancestors, [ $ref ] ) );
+	return tag_refs( $resolve(), array_merge( $ancestors, [ $key ] ) );
 }
 
 /**
@@ -296,36 +325,30 @@ function get_pattern_blocks( int $ref ) : array {
 }
 
 /**
- * Record the synced pattern refs a block tree was resolved through, so self-referencing patterns stop.
+ * Record the chain of references a block tree was resolved through on every block in it.
  *
  * @param array<int, array<string, mixed>> $blocks Parsed blocks.
- * @param array<int, int>                  $refs   Pattern post IDs.
+ * @param array<int, string>               $refs   Reference keys, e.g. `pattern:12`.
  * @return array<int, array<string, mixed>>
  */
-function tag_pattern_refs( array $blocks, array $refs ) : array {
+function tag_refs( array $blocks, array $refs ) : array {
 	foreach ( $blocks as &$block ) {
-		$block['schemaOrgPatternRefs'] = $refs;
-		$block['innerBlocks']          = tag_pattern_refs( $block['innerBlocks'] ?? [], $refs );
+		$block['schemaOrgRefs'] = $refs;
+		$block['innerBlocks']   = tag_refs( $block['innerBlocks'] ?? [], $refs );
 	}
 
 	return $blocks;
 }
 
 /**
- * Get the parsed blocks of the template part a core/template-part block shows.
+ * Get the parsed blocks of a template part.
  *
- * @param array<string, mixed> $block Parsed core/template-part block.
+ * @param string $theme Theme slug.
+ * @param string $slug  Template part slug.
  * @return array<int, array<string, mixed>>
  */
-function get_template_part_blocks( array $block ) : array {
+function get_template_part_blocks( string $theme, string $slug ) : array {
 	static $parsed = [];
-
-	$slug  = sanitize_key( (string) ( $block['attrs']['slug'] ?? '' ) );
-	$theme = (string) ( $block['attrs']['theme'] ?? get_stylesheet() );
-
-	if ( '' === $slug ) {
-		return [];
-	}
 
 	$key = $theme . '//' . $slug;
 
@@ -335,4 +358,21 @@ function get_template_part_blocks( array $block ) : array {
 	}
 
 	return $parsed[ $key ];
+}
+
+/**
+ * Get the parsed blocks of a post's content, or none for a password-protected post.
+ *
+ * @param int $post_id Post ID.
+ * @return array<int, array<string, mixed>>
+ */
+function get_post_content_blocks( int $post_id ) : array {
+	static $parsed = [];
+
+	if ( ! isset( $parsed[ $post_id ] ) ) {
+		$post               = get_post( $post_id );
+		$parsed[ $post_id ] = $post && ! post_password_required( $post ) ? parse_blocks( $post->post_content ) : [];
+	}
+
+	return $parsed[ $post_id ];
 }

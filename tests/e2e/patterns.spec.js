@@ -258,7 +258,14 @@ test.describe( 'Schema.org patterns', () => {
 					publisher: { '@id': `${ site.home }#organization` },
 					keywords: site.category.name,
 					headline: 'Planting season',
-					author: { '@type': 'Person', name: site.author },
+					author: {
+						'@type': 'Person',
+						'@id': expect.stringMatching(
+							/#\/schema\/person\/[a-f0-9]+$/
+						),
+						name: site.author,
+						url: expect.stringMatching( /^https?:\/\// ),
+					},
 					datePublished: expect.stringMatching( ISO_DATE ),
 					image: site.image.source_url,
 				} );

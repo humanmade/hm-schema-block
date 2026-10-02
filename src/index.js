@@ -18,6 +18,7 @@ import { __ } from '@wordpress/i18n';
 import SchemaTypeSelector from './components/SchemaTypeSelector';
 import AttributeMappingControls from './components/AttributeMappingControls';
 import SchemaPresets from './components/SchemaPresets';
+import EntityControls from './components/EntityControls';
 import {
 	findParentType,
 	getPropertyCandidates,
@@ -172,6 +173,14 @@ const withSchemaOrgControls = createHigherOrderComponent( ( BlockEdit ) => {
 							onChange={ ( type ) =>
 								updateSchemaOrg( {
 									type,
+									// Drop a nesting property the new type doesn't have.
+									...( schemaOrg.contains &&
+									! window.schemaOrgBlocksData
+										?.schemaProperties?.[ type ]?.[
+										schemaOrg.contains
+									]
+										? { contains: undefined }
+										: {} ),
 									// A site-wide id only stays with the same type or a subtype.
 									...( schemaOrg.id &&
 									! (
@@ -228,6 +237,13 @@ const withSchemaOrgControls = createHigherOrderComponent( ( BlockEdit ) => {
 								onChange={ ( mappings ) =>
 									updateSchemaOrg( { mappings } )
 								}
+							/>
+						) }
+
+						{ schemaOrg.type && (
+							<EntityControls
+								schemaOrg={ schemaOrg }
+								onChange={ updateSchemaOrg }
 							/>
 						) }
 					</PanelBody>

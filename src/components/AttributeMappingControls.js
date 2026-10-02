@@ -4,10 +4,17 @@
  * @package
  */
 
-import { SelectControl, Button, Notice } from '@wordpress/components';
+import {
+	SelectControl,
+	Button,
+	Notice,
+	TextControl,
+} from '@wordpress/components';
 import { __ } from '@wordpress/i18n';
 import { useMemo } from '@wordpress/element';
 import { plus, trash } from '@wordpress/icons';
+
+import { toEntityId } from './EntityControls';
 
 const AttributeMappingControls = ( {
 	attributes,
@@ -162,6 +169,27 @@ const AttributeMappingControls = ( {
 						}
 					/>
 
+					{ getSourceKey( mapping ) === CUSTOM_REFERENCE && (
+						<TextControl
+							__next40pxDefaultSize
+							__nextHasNoMarginBottom
+							label={ __(
+								'Linked entity ID',
+								'schema-org-blocks'
+							) }
+							value={ mapping.id || '' }
+							onChange={ ( id ) =>
+								updateMapping( property, {
+									id: toEntityId( id ),
+								} )
+							}
+							help={ __(
+								'The Entity ID set on the block to link to.',
+								'schema-org-blocks'
+							) }
+						/>
+					) }
+
 					{ mapping.source === 'attribute' && (
 						<SelectControl
 							__next40pxDefaultSize
@@ -203,6 +231,11 @@ const AttributeMappingControls = ( {
 };
 
 /**
+ * Source picker value for a reference to an entity id typed by hand.
+ */
+const CUSTOM_REFERENCE = 'reference:__custom';
+
+/**
  * Mapping sources offered in the Source picker. `post:` keys carry the post field.
  */
 const SOURCES = [
@@ -233,8 +266,20 @@ const SOURCES = [
 	{ label: __( 'Site URL', 'schema-org-blocks' ), value: 'site:url' },
 	{ label: __( 'Site logo', 'schema-org-blocks' ), value: 'site:logo' },
 	{
+		label: __( 'Site language', 'schema-org-blocks' ),
+		value: 'site:language',
+	},
+	{
 		label: __( 'Link to site Organization', 'schema-org-blocks' ),
 		value: 'reference:organization',
+	},
+	{
+		label: __( 'Link to site Web site', 'schema-org-blocks' ),
+		value: 'reference:website',
+	},
+	{
+		label: __( 'Link to another entity by ID', 'schema-org-blocks' ),
+		value: CUSTOM_REFERENCE,
 	},
 ];
 
@@ -246,7 +291,10 @@ const SOURCES = [
  */
 function getSourceKey( mapping ) {
 	if ( mapping.source === 'reference' ) {
-		return `reference:${ mapping.id }`;
+		const key = `reference:${ mapping.id }`;
+		return SOURCES.some( ( source ) => source.value === key )
+			? key
+			: CUSTOM_REFERENCE;
 	}
 	if ( mapping.source === 'post' || mapping.source === 'site' ) {
 		return `${ mapping.source }:${
@@ -263,11 +311,21 @@ function getSourceKey( mapping ) {
  * @return {Object} Mapping fields to merge.
  */
 function parseSourceKey( key ) {
+	if ( key === CUSTOM_REFERENCE ) {
+		return {
+			source: 'reference',
+			id: '',
+			field: undefined,
+			attributeName: undefined,
+		};
+	}
 	const [ source, detail ] = key.split( ':' );
 	return {
 		source,
 		field: source === 'reference' ? undefined : detail,
 		id: source === 'reference' ? detail : undefined,
+		// Keep the attribute only while the source is an attribute.
+		...( source === 'attribute' ? {} : { attributeName: undefined } ),
 	};
 }
 

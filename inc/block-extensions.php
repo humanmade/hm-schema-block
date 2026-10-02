@@ -5,7 +5,10 @@
  * A typed block is an entity. Its properties come from its own mappings and from property
  * blocks below it: inner blocks marked as properties, found through any untyped container
  * blocks in between. A typed block inside another typed block is a separate entity unless it
- * is marked as a property. A typed post template gives one entity per post in its query.
+ * is marked as a property; the outer entity also contains it, nested under its `contains`
+ * property (hasPart by default for creative works). Post content blocks resolve to the post's
+ * blocks, so a template entity contains the entities in the post. A typed post template gives
+ * one entity per post in its query.
  *
  * @package SchemaOrgBlocks
  */
@@ -54,10 +57,11 @@ function add_schema_org_attribute( array $args, string $block_name ) : array {
  * Get a block's schemaOrg configuration with every key present and typed.
  *
  * `id` names a site-wide entity, output as `@id` home URL + `#id`, so other entities can
- * refer to it with a `reference` mapping.
+ * refer to it with a `reference` mapping. `contains` names the property that holds entities
+ * found inside the block; an empty string turns that off, and null uses the default.
  *
  * @param array<string, mixed> $block Parsed block.
- * @return array{type: ?string, mappings: array<string, mixed>, isProperty: bool, propertyName: ?string, id: ?string}
+ * @return array{type: ?string, mappings: array<string, mixed>, isProperty: bool, propertyName: ?string, id: ?string, contains: ?string}
  */
 function get_config( array $block ) : array {
 	$config = $block['attrs']['schemaOrg'] ?? [];
@@ -70,6 +74,7 @@ function get_config( array $block ) : array {
 		'isProperty'   => ! empty( $config['isProperty'] ),
 		'propertyName' => is_string( $config['propertyName'] ?? null ) && '' !== $config['propertyName'] ? $config['propertyName'] : null,
 		'id'           => '' === $id ? null : $id,
+		'contains'     => is_string( $config['contains'] ?? null ) ? $config['contains'] : null,
 	];
 }
 
@@ -139,7 +144,7 @@ function extract_schema( array $blocks, array $context = [] ) : array {
 			$schema = array_merge( $schema, build_entities( $block, $context ) );
 		}
 
-		$schema = array_merge( $schema, extract_schema( BlockValues\get_inner_blocks( $block ), get_inner_context( $block, $context ) ) );
+		$schema = array_merge( $schema, extract_schema( BlockValues\get_inner_blocks( $block, $context ), get_inner_context( $block, $context ) ) );
 	}
 
 	return $schema;
@@ -254,6 +259,18 @@ function build_schema_object( array $block, array $context = [] ) : array {
 		}
 	}
 
+	$contains = get_contains_property( $type, $config['contains'] );
+
+	if ( null !== $contains ) {
+		$accepted = (array) ( SchemaTypes\get_type_properties( $type )[ $contains ]['type'] ?? [] );
+
+		foreach ( get_contained_entities( $block, get_inner_context( $block, $context ) ) as $entity ) {
+			if ( type_accepts( $accepted, (string) ( $entity['@type'] ?? '' ) ) ) {
+				$from_children[ $contains ][] = $entity;
+			}
+		}
+	}
+
 	foreach ( $from_children as $property => $values ) {
 		if ( 'itemListElement' === $property ) {
 			$values = wrap_list_items( $values );
@@ -272,6 +289,83 @@ function build_schema_object( array $block, array $context = [] ) : array {
 }
 
 /**
+ * Get the property that holds the entities found inside a typed block.
+ *
+ * @param string      $type     Schema type of the block.
+ * @param string|null $contains Configured property, '' for none, or null for the default:
+ *                              hasPart when the type has it. A property the type doesn't
+ *                              have, left over from another type, also gives the default.
+ * @return string|null
+ */
+function get_contains_property( string $type, ?string $contains ) : ?string {
+	$properties = SchemaTypes\get_type_properties( $type );
+
+	if ( '' === $contains ) {
+		return null;
+	}
+
+	if ( null !== $contains && isset( $properties[ $contains ] ) ) {
+		return $contains;
+	}
+
+	return isset( $properties['hasPart'] ) ? 'hasPart' : null;
+}
+
+/**
+ * Build the entities found inside a block, stopping at each one.
+ *
+ * Walks through untyped containers, synced patterns, template parts and post content, but not
+ * into property blocks or untyped post templates.
+ *
+ * @param array<string, mixed> $block   Parsed block.
+ * @param array<string, mixed> $context Context for its inner blocks.
+ * @return array<int, array<string, mixed>>
+ */
+function get_contained_entities( array $block, array $context ) : array {
+	$found = [];
+
+	foreach ( BlockValues\get_inner_blocks( $block, $context ) as $child ) {
+		if ( is_hidden( $child ) ) {
+			continue;
+		}
+
+		if ( is_entity( $child ) ) {
+			$found = array_merge( $found, build_entities( $child, $context ) );
+			continue;
+		}
+
+		if ( get_config( $child )['isProperty'] || 'core/post-template' === ( $child['blockName'] ?? '' ) ) {
+			continue;
+		}
+
+		$found = array_merge( $found, get_contained_entities( $child, get_inner_context( $child, $context ) ) );
+	}
+
+	return $found;
+}
+
+/**
+ * Whether a schema type is one of the accepted types or a subtype of one.
+ *
+ * @param array<int, string> $accepted Accepted types; Thing accepts every type.
+ * @param string             $type     Schema type.
+ * @return bool
+ */
+function type_accepts( array $accepted, string $type ) : bool {
+	if ( in_array( 'Thing', $accepted, true ) ) {
+		return '' !== $type;
+	}
+
+	foreach ( $accepted as $candidate ) {
+		if ( $candidate === $type || SchemaTypes\is_subtype_of( $type, $candidate ) ) {
+			return true;
+		}
+	}
+
+	return false;
+}
+
+/**
  * Find the property blocks of a typed block, with the context each one receives.
  *
  * Walks inner blocks through untyped containers. Stops at typed blocks that are not
@@ -285,7 +379,7 @@ function build_schema_object( array $block, array $context = [] ) : array {
 function get_property_blocks( array $block, array $context ) : array {
 	$found = [];
 
-	foreach ( BlockValues\get_inner_blocks( $block ) as $child ) {
+	foreach ( BlockValues\get_inner_blocks( $block, $context ) as $child ) {
 		if ( is_hidden( $child ) ) {
 			continue;
 		}
@@ -324,6 +418,13 @@ function get_property_values( array $block, string $property, array $context ) :
 	$type = get_config( $block )['type'];
 
 	if ( null === $type ) {
+		$has_mapping = is_array( get_config( $block )['mappings'][ $property ] ?? null );
+		$object      = $has_mapping ? null : DynamicValues\get_object( $block, $context );
+
+		if ( $object ) {
+			return [ $object ];
+		}
+
 		$value = get_property_value( $block, $property, $context );
 		return is_empty_value( $value ) ? [] : [ $value ];
 	}
@@ -390,7 +491,7 @@ function get_property_value( array $block, string $property, array $context = []
  * @return string|null
  */
 function get_block_text( array $block, array $context ) : ?string {
-	return DynamicValues\get_value( $block, $context ) ?? BlockValues\get_text( BlockValues\get_html( $block ) );
+	return DynamicValues\get_value( $block, $context ) ?? BlockValues\get_text( BlockValues\get_html( $block, $context ) );
 }
 
 /**
@@ -400,8 +501,9 @@ function get_block_text( array $block, array $context ) : ?string {
  * - `attribute`: a block attribute (`attributeName`); with no attribute name, the block's text.
  * - `content`: the block's text, or a dynamic block's value.
  * - `innerBlocks`: the text of its inner blocks only, e.g. a details block without its summary.
- * - `post`: a field of the post in context (`field`: title, url, date, modified, excerpt, author, image).
- * - `site`: a field of the site (`field`: name, description, url, logo).
+ * - `post`: a field of the post in context (`field`: title, url, date, modified, excerpt, image,
+ *   or author, which gives a Person).
+ * - `site`: a field of the site (`field`: name, description, url, logo, language).
  * - `reference`: a link to a site-wide entity by its id (`id`), e.g. the header's Organization.
  *
  * @param array<string, mixed> $block   Parsed block.
@@ -424,12 +526,16 @@ function resolve_mapping( array $block, array $mapping, array $context = [] ) {
 			return get_block_text( $block, $context );
 
 		case 'innerBlocks':
-			$html = array_map( 'SchemaOrgBlocks\\BlockValues\\get_html', BlockValues\get_inner_blocks( $block ) );
+			$html = array_map( static fn ( $child ) => BlockValues\get_html( $child, $context ), BlockValues\get_inner_blocks( $block, $context ) );
 			return BlockValues\get_text( implode( "\n", $html ) );
 
 		case 'post':
-			$post = get_post( DynamicValues\get_post_id( $context ) );
-			return $post ? DynamicValues\get_post_field( (string) ( $mapping['field'] ?? 'title' ), $post ) : null;
+			$post  = get_post( DynamicValues\get_post_id( $context ) );
+			$field = (string) ( $mapping['field'] ?? 'title' );
+			if ( ! $post ) {
+				return null;
+			}
+			return 'author' === $field ? DynamicValues\get_author_person( $post ) : DynamicValues\get_post_field( $field, $post );
 
 		case 'site':
 			return DynamicValues\get_site_field( (string) ( $mapping['field'] ?? 'name' ) );

@@ -60,6 +60,9 @@ function get_schema_types() : array {
 				'text' => [ 'type' => 'Text', 'label' => 'Text' ],
 				'publisher' => [ 'type' => [ 'Organization', 'Person' ], 'label' => 'Publisher' ],
 				'keywords' => [ 'type' => 'Text', 'label' => 'Keywords' ],
+				'hasPart' => [ 'type' => 'CreativeWork', 'label' => 'Has Part' ],
+				'inLanguage' => [ 'type' => 'Text', 'label' => 'Language' ],
+				'isPartOf' => [ 'type' => 'CreativeWork', 'label' => 'Is Part Of' ],
 			],
 		],
 		'WebPage' => [

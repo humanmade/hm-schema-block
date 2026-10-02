@@ -161,7 +161,27 @@ export const PRESETS = {
 		blocks: [ 'core/group' ],
 		schemaOrg: {
 			type: 'Article',
-			mappings: { url: { source: 'post', field: 'url' } },
+			mappings: {
+				url: { source: 'post', field: 'url' },
+				inLanguage: { source: 'site', field: 'language' },
+			},
+			isProperty: false,
+			propertyName: null,
+		},
+	},
+	webPage: {
+		label: __( 'Web page', 'schema-org-blocks' ),
+		blocks: [ 'core/group' ],
+		schemaOrg: {
+			type: 'WebPage',
+			contains: 'mainEntity',
+			mappings: {
+				'@id': { source: 'post', field: 'url' },
+				url: { source: 'post', field: 'url' },
+				name: { source: 'post', field: 'title' },
+				isPartOf: { source: 'reference', id: 'website' },
+				inLanguage: { source: 'site', field: 'language' },
+			},
 			isProperty: false,
 			propertyName: null,
 		},
