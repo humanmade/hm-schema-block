@@ -54,6 +54,16 @@ const QUESTIONS = [
 	],
 ];
 
+// The parts of the video in the README GIF: [ from mark, to mark, speed ].
+const GIF_PARTS = [
+	[ 'gifFrom', 'typeFrom', 1.6 ],
+	[ 'typeFrom', 'typeTo', 3 ],
+	[ 'typeTo', 'faqTo', 1.9 ],
+	[ 'siteFrom', 'siteTo', 1.7 ],
+	[ 'graphFrom', 'graphTo', 1.7 ],
+	[ 'endFrom', 'end', 2 ],
+];
+
 const shotPath = ( file ) => path.join( SHOT_DIR, file );
 
 // The Schema.org Mapping panel in the editor sidebar.
@@ -151,6 +161,22 @@ async function shootTall( page, locator, file ) {
 	await page.waitForTimeout( 400 );
 }
 
+// Answers the inserter's block directory search with no results, so it only shows
+// installed blocks and patterns, not plugins to install.
+const hideBlockDirectory = ( target ) =>
+	target.route(
+		( url ) =>
+			decodeURIComponent( url.href ).includes(
+				'/wp/v2/block-directory/search'
+			),
+		( route ) =>
+			route.fulfill( {
+				status: 200,
+				contentType: 'application/json',
+				body: '[]',
+			} )
+	);
+
 // The client ID of the selected block.
 const selectedClientId = ( page ) =>
 	page.evaluate( () =>
@@ -164,7 +190,10 @@ test.describe( 'Demo media', () => {
 	);
 	test.describe.configure( { timeout: 600000 } );
 	// The default page is only used for the screenshots outside the recording.
-	test.use( { viewport: { width: 1280, height: 1100 } } );
+	test.use( {
+		viewport: { width: 1280, height: 1100 },
+		deviceScaleFactor: 2,
+	} );
 
 	test.beforeAll( async ( { requestUtils } ) => {
 		fs.mkdirSync( SHOT_DIR, { recursive: true } );
@@ -207,6 +236,7 @@ test.describe( 'Demo media', () => {
 		insertBlock,
 		schemaPanel,
 	} ) => {
+		await hideBlockDirectory( page );
 		await newPost();
 
 		await page
@@ -308,8 +338,10 @@ test.describe( 'Demo media', () => {
 			baseURL: process.env.WP_BASE_URL,
 			storageState: getStorageStatePath(),
 			viewport: SIZE,
+			deviceScaleFactor: 2,
 			recordVideo: { dir: RAW_DIR, size: SIZE },
 		} );
+		await hideBlockDirectory( context );
 		await context.addInitScript( overlayScript );
 		const page = await context.newPage();
 		const demo = new Demo( page );
@@ -330,11 +362,11 @@ test.describe( 'Demo media', () => {
 			).toBeHidden();
 			await demo.restore();
 			await page.mouse.move( 640, 420, { steps: 5 } );
-			await demo.pause( 800 );
+			await demo.pause( 600 );
 			demo.mark( 'start' );
 			await demo.caption(
 				'Schema.org Blocks: structured data from the blocks you already use',
-				3000
+				2400
 			);
 
 			// 2. Insert the FAQ variation and fill in two questions.
@@ -368,6 +400,7 @@ test.describe( 'Demo media', () => {
 				'[data-type="core/accordion-item"]'
 			);
 			await expect( items ).toHaveCount( 2 );
+			demo.mark( 'typeFrom' );
 			for ( const [
 				index,
 				[ question, answer ],
@@ -377,13 +410,20 @@ test.describe( 'Demo media', () => {
 					item.getByRole( 'textbox', { name: 'Accordion title' } ),
 					300
 				);
-				await demo.type( question );
+				await demo.type( question, 20 );
+				if ( index === 0 ) {
+					await demo.caption(
+						'Type your questions and answers as usual.',
+						0
+					);
+				}
 				await demo.click(
 					item.locator( '[data-type="core/paragraph"]' ).first(),
 					300
 				);
-				await demo.type( answer );
+				await demo.type( answer, 20 );
 			}
+			demo.mark( 'typeTo' );
 			await demo.pause( 600 );
 
 			// 3. The accordion and an item in the Schema.org Mapping panel.
@@ -415,7 +455,7 @@ test.describe( 'Demo media', () => {
 				600
 			);
 			await demo.moveTo( valueType );
-			await demo.pause( 2200 );
+			await demo.pause( 4200 );
 			await demo.shoot( () =>
 				shootTall(
 					page,
@@ -462,9 +502,10 @@ test.describe( 'Demo media', () => {
 			await demo.shoot( () =>
 				page.screenshot( {
 					path: shotPath( 'front-end-faq-json-ld.png' ),
+					scale: 'css',
 				} )
 			);
-			demo.mark( 'gifTo' );
+			demo.mark( 'faqTo' );
 
 			// 5. Type the single template in the site editor.
 			await demo.caption( '', 400 );
@@ -502,6 +543,7 @@ test.describe( 'Demo media', () => {
 				`[data-block="${ innerId }"]`
 			);
 
+			demo.mark( 'siteFrom' );
 			await demo.caption(
 				'In the site editor, set the template up as a Web page.',
 				800
@@ -523,6 +565,7 @@ test.describe( 'Demo media', () => {
 			await demo.shoot( () =>
 				page.screenshot( {
 					path: shotPath( 'site-editor-web-page.png' ),
+					scale: 'css',
 				} )
 			);
 
@@ -535,6 +578,7 @@ test.describe( 'Demo media', () => {
 				sidebar.getByRole( 'button', { name: 'Article', exact: true } ),
 				1600
 			);
+			demo.mark( 'siteTo' );
 			expect( await selectedClientId( page ) ).toBe( innerId );
 
 			// The graph settings of the Web page: its id and how it nests the Article.
@@ -558,11 +602,14 @@ test.describe( 'Demo media', () => {
 				name: 'Save',
 				exact: true,
 			} );
-			await demo.moveTo( saveButton );
-			await editor.saveSiteEditorEntities( {
-				isOnlyCurrentEntityDirty: true,
-			} );
-			await demo.caption( '', 900 );
+			await demo.caption( 'Save the template.', 300 );
+			await demo.click( saveButton, 0 );
+			await page
+				.getByRole( 'button', { name: 'Dismiss this notice' } )
+				.getByText( /(updated|published)\./ )
+				.first()
+				.waitFor();
+			await demo.caption( '', 1800 );
 
 			// 6. The connected graph on the front end.
 			await demo.offCamera( () => demo.goto( `/?p=${ postId }` ) );
@@ -587,21 +634,37 @@ test.describe( 'Demo media', () => {
 				hasPart: { '@type': 'FAQPage' },
 			} );
 
+			demo.mark( 'graphFrom' );
 			await demo.pause( 600 );
 			await demo.showJsonLd();
 			await demo.caption(
 				'One connected graph: WebPage, Article, FAQ, WebSite and Organization.',
 				2000
 			);
-			await demo.shoot( () =>
-				page.screenshot( {
+			// The whole graph in one shot: a smaller font and a viewport as tall as the JSON.
+			await demo.shoot( async () => {
+				const height = await page.evaluate( () =>
+					window.__demo.compact( true )
+				);
+				await page.setViewportSize( {
+					width: SIZE.width,
+					height: Math.max( SIZE.height, Math.ceil( height ) ),
+				} );
+				await page.waitForTimeout( 400 );
+				await page.screenshot( {
 					path: shotPath( 'front-end-page-graph.png' ),
-				} )
-			);
+					scale: 'css',
+				} );
+				await page.setViewportSize( SIZE );
+				await page.evaluate( () => window.__demo.compact( false ) );
+				await page.waitForTimeout( 300 );
+			} );
 			await demo.scrollPanel( 7000 );
 			await demo.pause( 1200 );
+			demo.mark( 'graphTo' );
 
 			// 7. End card.
+			demo.mark( 'endFrom' );
 			await demo.endCard(
 				'Schema.org Blocks',
 				'github.com/humanmade/hm-schema-block',
@@ -645,7 +708,7 @@ test.describe( 'Demo media', () => {
 				)
 			);
 			if ( demo.marks.end ) {
-				encode( demo, await video.path(), MEDIA_DIR );
+				encode( demo, await video.path(), MEDIA_DIR, GIF_PARTS );
 			}
 		}
 	} );

@@ -39,6 +39,7 @@ function overlayScript() {
 		#demo-end strong { font-size: 64px; font-weight: 700; letter-spacing: -.01em; }
 		#demo-end span { font-size: 30px; color: #cbd5e1; }
 		html.demo-shoot #demo-cursor, html.demo-shoot #demo-caption, html.demo-shoot .demo-ripple, html.demo-end #demo-cursor { display: none !important; }
+		html.demo-compact #demo-jsonld pre { flex: none; overflow: visible; padding-bottom: 16px; font-size: 11.5px; line-height: 1.45; }
 	`;
 
 	const ARROW =
@@ -222,6 +223,18 @@ function overlayScript() {
 			);
 			document.body.style.marginRight = '520px';
 		},
+		// Smaller JSON that is not scrolled, for a screenshot. Returns the height it needs.
+		compact( on ) {
+			const panel = document.querySelector( '#demo-jsonld' );
+			document.documentElement.classList.toggle( 'demo-compact', on );
+			const pre = panel.querySelector( 'pre' );
+			pre.scrollTop = 0;
+			return (
+				panel.getBoundingClientRect().top +
+				panel.querySelector( 'h2' ).offsetHeight +
+				pre.scrollHeight
+			);
+		},
 		scrollPanel( duration ) {
 			const pre = document.querySelector( '#demo-jsonld pre' );
 			const distance = pre.scrollHeight - pre.clientHeight;
@@ -324,8 +337,8 @@ class Demo {
 		await this.pause( after );
 	}
 
-	async type( text ) {
-		await this.page.keyboard.type( text, { delay: 40 } );
+	async type( text, delay = 40 ) {
+		await this.page.keyboard.type( text, { delay } );
 		await this.pause( 500 );
 	}
 
@@ -435,13 +448,14 @@ function ffmpeg( args ) {
 
 /**
  * Cuts the recording to the kept segments and writes demo.mp4, then makes demo.gif from
- * the part between the `gifFrom` and `gifTo` marks, sped up.
+ * parts of it, each sped up by its own factor.
  *
- * @param {Demo}   demo   The demo, with its timeline.
- * @param {string} webm   Path of the recording.
- * @param {string} outDir Directory for demo.mp4 and demo.gif.
+ * @param {Demo}   demo     The demo, with its timeline.
+ * @param {string} webm     Path of the recording.
+ * @param {string} outDir   Directory for demo.mp4 and demo.gif.
+ * @param {Array}  gifParts [ from mark, to mark, speed ] for each part of the GIF.
  */
-function encode( demo, webm, outDir ) {
+function encode( demo, webm, outDir, gifParts ) {
 	fs.mkdirSync( outDir, { recursive: true } );
 	const between = demo
 		.segments()
@@ -471,17 +485,30 @@ function encode( demo, webm, outDir ) {
 		mp4,
 	] );
 
-	const from = demo.outputTime( demo.marks.gifFrom );
-	const to = demo.outputTime( demo.marks.gifTo );
+	const labels = gifParts.map( ( part, index ) => `p${ index }` );
+	const parts = gifParts.map( ( [ from, to, speed ], index ) => {
+		const a = demo.outputTime( demo.marks[ from ] ).toFixed( 2 );
+		const b = demo.outputTime( demo.marks[ to ] ).toFixed( 2 );
+		return `[s${ index }]trim=start=${ a }:end=${ b },setpts=(PTS-STARTPTS)/${ speed }[${ labels[ index ] }]`;
+	} );
+	const filter = [
+		`[0:v]split=${ gifParts.length }${ labels
+			.map( ( label, index ) => `[s${ index }]` )
+			.join( '' ) }`,
+		...parts,
+		`${ labels
+			.map( ( label ) => `[${ label }]` )
+			.join(
+				''
+			) }concat=n=${ gifParts.length }:v=1:a=0,fps=12,scale=800:-1:flags=lanczos,split[a][b]`,
+		'[a]palettegen=max_colors=128:stats_mode=diff[p]',
+		'[b][p]paletteuse=dither=bayer:bayer_scale=4:diff_mode=rectangle',
+	].join( ';' );
 	ffmpeg( [
-		'-ss',
-		from.toFixed( 2 ),
-		'-to',
-		to.toFixed( 2 ),
 		'-i',
 		mp4,
-		'-vf',
-		'setpts=PTS/1.7,fps=12,scale=800:-1:flags=lanczos,split[a][b];[a]palettegen=max_colors=128:stats_mode=diff[p];[b][p]paletteuse=dither=bayer:bayer_scale=4:diff_mode=rectangle',
+		'-filter_complex',
+		filter,
 		'-loop',
 		'0',
 		path.join( outDir, 'demo.gif' ),
