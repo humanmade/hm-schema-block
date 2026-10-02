@@ -263,6 +263,10 @@ const SOURCES = [
 	{ label: __( 'Site URL', 'schema-org-blocks' ), value: 'site:url' },
 	{ label: __( 'Site logo', 'schema-org-blocks' ), value: 'site:logo' },
 	{
+		label: __( 'Site language', 'schema-org-blocks' ),
+		value: 'site:language',
+	},
+	{
 		label: __( 'Link to site Organization', 'schema-org-blocks' ),
 		value: 'reference:organization',
 	},
