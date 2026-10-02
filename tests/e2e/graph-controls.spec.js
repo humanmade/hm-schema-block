@@ -149,11 +149,11 @@ test.describe( 'Graph controls', () => {
 			await row
 				.getByLabel( 'Source' )
 				.selectOption( { label: 'Link to another entity by ID' } );
-			await row.getByLabel( 'Entity ID' ).fill( 'maker' );
+			await row.getByLabel( 'Linked entity ID' ).fill( 'maker' );
 
 			expect(
 				( await getSchemaOrg( page, articleId ) ).mappings.publisher
-			).toMatchObject( { source: 'reference', id: 'maker' } );
+			).toEqual( { source: 'reference', id: 'maker' } );
 
 			const data = await publishAndGetJsonLd();
 			await testInfo.attach( 'json-ld', {

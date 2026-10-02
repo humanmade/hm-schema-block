@@ -173,7 +173,10 @@ const AttributeMappingControls = ( {
 						<TextControl
 							__next40pxDefaultSize
 							__nextHasNoMarginBottom
-							label={ __( 'Entity ID', 'schema-org-blocks' ) }
+							label={ __(
+								'Linked entity ID',
+								'schema-org-blocks'
+							) }
 							value={ mapping.id || '' }
 							onChange={ ( id ) =>
 								updateMapping( property, {
@@ -309,13 +312,20 @@ function getSourceKey( mapping ) {
  */
 function parseSourceKey( key ) {
 	if ( key === CUSTOM_REFERENCE ) {
-		return { source: 'reference', field: undefined, id: '' };
+		return {
+			source: 'reference',
+			id: '',
+			field: undefined,
+			attributeName: undefined,
+		};
 	}
 	const [ source, detail ] = key.split( ':' );
 	return {
 		source,
 		field: source === 'reference' ? undefined : detail,
 		id: source === 'reference' ? detail : undefined,
+		// Keep the attribute only while the source is an attribute.
+		...( source === 'attribute' ? {} : { attributeName: undefined } ),
 	};
 }
 
