@@ -411,6 +411,13 @@ function get_property_values( array $block, string $property, array $context ) :
 	$type = get_config( $block )['type'];
 
 	if ( null === $type ) {
+		$has_mapping = is_array( get_config( $block )['mappings'][ $property ] ?? null );
+		$object      = $has_mapping ? null : DynamicValues\get_object( $block, $context );
+
+		if ( $object ) {
+			return [ $object ];
+		}
+
 		$value = get_property_value( $block, $property, $context );
 		return is_empty_value( $value ) ? [] : [ $value ];
 	}
@@ -487,8 +494,9 @@ function get_block_text( array $block, array $context ) : ?string {
  * - `attribute`: a block attribute (`attributeName`); with no attribute name, the block's text.
  * - `content`: the block's text, or a dynamic block's value.
  * - `innerBlocks`: the text of its inner blocks only, e.g. a details block without its summary.
- * - `post`: a field of the post in context (`field`: title, url, date, modified, excerpt, author, image).
- * - `site`: a field of the site (`field`: name, description, url, logo).
+ * - `post`: a field of the post in context (`field`: title, url, date, modified, excerpt, image,
+ *   or author, which gives a Person).
+ * - `site`: a field of the site (`field`: name, description, url, logo, language).
  * - `reference`: a link to a site-wide entity by its id (`id`), e.g. the header's Organization.
  *
  * @param array<string, mixed> $block   Parsed block.
@@ -515,8 +523,12 @@ function resolve_mapping( array $block, array $mapping, array $context = [] ) {
 			return BlockValues\get_text( implode( "\n", $html ) );
 
 		case 'post':
-			$post = get_post( DynamicValues\get_post_id( $context ) );
-			return $post ? DynamicValues\get_post_field( (string) ( $mapping['field'] ?? 'title' ), $post ) : null;
+			$post  = get_post( DynamicValues\get_post_id( $context ) );
+			$field = (string) ( $mapping['field'] ?? 'title' );
+			if ( ! $post ) {
+				return null;
+			}
+			return 'author' === $field ? DynamicValues\get_author_person( $post ) : DynamicValues\get_post_field( $field, $post );
 
 		case 'site':
 			return DynamicValues\get_site_field( (string) ( $mapping['field'] ?? 'name' ) );

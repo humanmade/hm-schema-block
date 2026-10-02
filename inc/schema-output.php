@@ -174,6 +174,7 @@ function collect_rendered_block( $block_content, $block, $instance = null ) {
  */
 function get_graph() : array {
 	$graph = remove_nested_duplicates( array_values( state()['objects'] ) );
+	$graph = link_repeated_entities( $graph );
 
 	if ( ! is_yoast_seo_active() ) {
 		$graph = add_referenced_site_entities( $graph );
@@ -223,6 +224,83 @@ function remove_nested_duplicates( array $graph ) : array {
 			static fn ( $object ) => ! isset( $nested[ md5( (string) wp_json_encode( $object ) ) ] )
 		)
 	);
+}
+
+/**
+ * Output entities that are nested more than once as one top-level node, referenced by @id.
+ *
+ * For example the same author Person on every post in a list becomes one Person node, and each
+ * post's author becomes {"@id": …}. Entities without an @id get one under the home URL.
+ *
+ * @param array<int, array<string, mixed>> $graph Schema objects.
+ * @return array<int, array<string, mixed>>
+ */
+function link_repeated_entities( array $graph ) : array {
+	$counts  = [];
+	$objects = [];
+
+	$count = static function ( $value ) use ( &$count, &$counts, &$objects ) : void {
+		if ( ! is_array( $value ) ) {
+			return;
+		}
+		foreach ( $value as $child ) {
+			if ( is_entity_object( $child ) ) {
+				$hash             = md5( (string) wp_json_encode( $child ) );
+				$counts[ $hash ]  = ( $counts[ $hash ] ?? 0 ) + 1;
+				$objects[ $hash ] = $child;
+			}
+			$count( $child );
+		}
+	};
+
+	foreach ( $graph as $node ) {
+		$count( $node );
+	}
+
+	$ids = [];
+	foreach ( $counts as $hash => $total ) {
+		if ( $total > 1 ) {
+			$object       = $objects[ $hash ];
+			$ids[ $hash ] = $object['@id'] ?? home_url( '/' ) . '#/schema/' . strtolower( (string) $object['@type'] ) . '/' . substr( $hash, 0, 10 );
+		}
+	}
+
+	if ( ! $ids ) {
+		return $graph;
+	}
+
+	$replace_children = static function ( array $value ) use ( &$replace_children, $ids ) : array {
+		foreach ( $value as $key => $child ) {
+			if ( ! is_array( $child ) ) {
+				continue;
+			}
+			$hash          = is_entity_object( $child ) ? md5( (string) wp_json_encode( $child ) ) : null;
+			$value[ $key ] = null !== $hash && isset( $ids[ $hash ] ) ? [ '@id' => $ids[ $hash ] ] : $replace_children( $child );
+		}
+		return $value;
+	};
+
+	$graph   = array_map( $replace_children, $graph );
+	$defined = get_graph_ids( $graph )[0];
+
+	foreach ( $ids as $hash => $id ) {
+		if ( ! isset( $defined[ $id ] ) ) {
+			$graph[] = [ '@id' => $id ] + $replace_children( $objects[ $hash ] );
+		}
+	}
+
+	return $graph;
+}
+
+/**
+ * Whether a value is a schema entity worth linking by @id: an object with a type, other than a
+ * ListItem, whose position ties it to one list.
+ *
+ * @param mixed $value Value.
+ * @return bool
+ */
+function is_entity_object( $value ) : bool {
+	return is_array( $value ) && isset( $value['@type'] ) && 'ListItem' !== $value['@type'];
 }
 
 /**

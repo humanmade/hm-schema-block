@@ -61,6 +61,7 @@ function get_schema_types() : array {
 				'publisher' => [ 'type' => [ 'Organization', 'Person' ], 'label' => 'Publisher' ],
 				'keywords' => [ 'type' => 'Text', 'label' => 'Keywords' ],
 				'hasPart' => [ 'type' => 'CreativeWork', 'label' => 'Has Part' ],
+				'inLanguage' => [ 'type' => 'Text', 'label' => 'Language' ],
 				'isPartOf' => [ 'type' => 'CreativeWork', 'label' => 'Is Part Of' ],
 			],
 		],
