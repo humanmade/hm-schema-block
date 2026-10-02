@@ -90,6 +90,14 @@ test.describe( 'Graph controls', () => {
 				'mainEntity'
 			);
 			await expect( nest ).toHaveValue( 'mainEntity' );
+
+			// Article has no mainEntity, so switching back drops it for the default.
+			await schemaPanel.sidebar
+				.getByLabel( 'Schema Type' )
+				.selectOption( 'Article' );
+			expect(
+				( await getSchemaOrg( page, groupId ) ).contains
+			).toBeUndefined();
 		} );
 
 		test( 'a mapping links to another entity by its Entity ID', async ( {

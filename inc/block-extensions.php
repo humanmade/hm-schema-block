@@ -293,15 +293,22 @@ function build_schema_object( array $block, array $context = [] ) : array {
  *
  * @param string      $type     Schema type of the block.
  * @param string|null $contains Configured property, '' for none, or null for the default:
- *                              hasPart when the type has it.
+ *                              hasPart when the type has it. A property the type doesn't
+ *                              have, left over from another type, also gives the default.
  * @return string|null
  */
 function get_contains_property( string $type, ?string $contains ) : ?string {
-	if ( null !== $contains ) {
-		return '' === $contains ? null : $contains;
+	$properties = SchemaTypes\get_type_properties( $type );
+
+	if ( '' === $contains ) {
+		return null;
 	}
 
-	return isset( SchemaTypes\get_type_properties( $type )['hasPart'] ) ? 'hasPart' : null;
+	if ( null !== $contains && isset( $properties[ $contains ] ) ) {
+		return $contains;
+	}
+
+	return isset( $properties['hasPart'] ) ? 'hasPart' : null;
 }
 
 /**

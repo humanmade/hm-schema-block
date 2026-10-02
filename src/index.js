@@ -173,6 +173,14 @@ const withSchemaOrgControls = createHigherOrderComponent( ( BlockEdit ) => {
 							onChange={ ( type ) =>
 								updateSchemaOrg( {
 									type,
+									// Drop a nesting property the new type doesn't have.
+									...( schemaOrg.contains &&
+									! window.schemaOrgBlocksData
+										?.schemaProperties?.[ type ]?.[
+										schemaOrg.contains
+									]
+										? { contains: undefined }
+										: {} ),
 									// A site-wide id only stays with the same type or a subtype.
 									...( schemaOrg.id &&
 									! (

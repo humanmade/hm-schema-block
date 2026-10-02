@@ -295,7 +295,9 @@ function get_inner_blocks( array $block, array $context = [] ) : array {
 function resolve_once( array $block, string $key, callable $resolve ) : array {
 	$ancestors = $block['schemaOrgRefs'] ?? [];
 
-	if ( str_ends_with( $key, ':0' ) || str_ends_with( $key, '//' ) || in_array( $key, $ancestors, true ) ) {
+	$is_empty = 1 === preg_match( '#^(post|pattern):0$|^part:.*//$#', $key );
+
+	if ( $is_empty || in_array( $key, $ancestors, true ) ) {
 		return [];
 	}
 
