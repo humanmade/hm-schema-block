@@ -15,6 +15,7 @@
 		"playground:start": "npx @wp-playground/cli server --blueprint=blueprint.json --auto-mount",
 		"test:e2e": "playwright test",
 		"patterns:generate": "SCHEMA_GENERATE_PATTERNS=1 playwright test generate-patterns",
+		"demo:record": "SCHEMA_DEMO=1 playwright test tests/e2e/demo.spec.js --reporter=line",
 		"test:e2e:debug": "playwright test --debug",
 		"test:e2e:watch": "playwright test --ui"
 	},
