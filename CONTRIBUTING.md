@@ -61,6 +61,10 @@ To build production assets:
 npm run build
 ```
 
+### Releasing
+
+Every push to `main` updates the `release` branch with a `dev-<sha>` build. For a versioned release, publish a GitHub release with a new `v<major>.<minor>.<patch>` tag on `main`, for example `gh release create v1.1.0 --target main --title v1.1.0 --notes-file notes.md`. The Tagged Release workflow then builds the plugin with that version and attaches `schema-org-blocks.zip` to the release.
+
 ## Project Structure
 
 ```

@@ -1,0 +1,45 @@
+name: Tagged Release
+
+on:
+    release:
+        types:
+            - published
+
+permissions:
+    contents: write
+
+jobs:
+    zip:
+        name: 'Attach plugin ZIP'
+        runs-on: ubuntu-latest
+        steps:
+            - name: Checkout
+              uses: actions/checkout@v4
+              with:
+                  ref: ${{ github.event.release.tag_name }}
+
+            - name: Set up Node
+              uses: actions/setup-node@v4
+              with:
+                  node-version-file: .nvmrc
+                  cache: 'npm'
+
+            - name: Install dependencies
+              run: npm ci
+
+            - name: Set version from tag
+              env:
+                  TAG: ${{ github.event.release.tag_name }}
+              run: sed -i "s/__VERSION__/${TAG#v}/g" schema-org-blocks.php
+
+            - name: Build
+              run: npm run build
+
+            - name: Create plugin ZIP
+              run: npm run plugin-zip
+
+            - name: Upload ZIP to the release
+              env:
+                  GH_TOKEN: ${{ github.token }}
+                  TAG: ${{ github.event.release.tag_name }}
+              run: gh release upload "$TAG" schema-org-blocks.zip --clobber
