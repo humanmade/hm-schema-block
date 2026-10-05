@@ -34,6 +34,7 @@ require_once __DIR__ . '/inc/dynamic-values.php';
 require_once __DIR__ . '/inc/block-extensions.php';
 require_once __DIR__ . '/inc/schema-output.php';
 require_once __DIR__ . '/inc/patterns.php';
+require_once __DIR__ . '/inc/abilities.php';
 
 // Bootstrap the plugin.
 bootstrap();

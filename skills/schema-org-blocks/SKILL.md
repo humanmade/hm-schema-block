@@ -24,6 +24,8 @@ The plugin turns a `schemaOrg` attribute on any block into JSON-LD in `wp_head` 
 - `mappings`: property → source on the block itself. Sources: `attribute` (`attributeName`, also reads attributes stored in markup such as image `url`), `content` (the block's text, or a dynamic block's value), `innerBlocks` (text of inner blocks only), `post` (`field`: title, url, date, modified, excerpt, author (a Person), image), `site` (`field`: name, description, url, logo, language), `reference` (`id`: links to any entity with that `id` as `{"@id": …}`).
 - `id`: names a site-wide entity. It is output as `@id` = home URL + `#id`. Use `organization` for the publisher and `website` for the site, the same ids Yoast SEO uses.
 
+The `schema-org-blocks/get-schema-types` ability lists the supported types and their properties, including inherited ones. Types added with the `schema_org_blocks_types` filter are included.
+
 ## How the graph is built
 
 1. Every typed, non-property block is an entity.
@@ -38,15 +40,15 @@ The plugin turns a `schemaOrg` attribute on any block into JSON-LD in `wp_head` 
 
 ## Recipes
 
-Working examples live in `patterns/` in the plugin and are registered as block patterns in the "Schema.org" category. Copy from them instead of writing markup from scratch.
+Working examples are registered as block patterns in the "Schema.org" category, named `schema-org-blocks/<name>`. Their markup is in `patterns/<name>.html` in the plugin, and the `schema-org-blocks/get-guidance` ability returns it with this guide. Copy from them instead of writing markup from scratch.
 
-| Goal | Pattern file | Root block |
-|------|--------------|------------|
-| FAQ | `faq.html` (accordion) or `faq-details.html` (details blocks) | `FAQPage` |
-| How-to | `how-to.html` | `HowTo`, named from the post title |
-| Single post template | `article-header.html` | `Article` with `publisher` → `organization` |
-| Site header | `site-header-organization.html` | `Organization` with `id: organization` |
-| Blog or archive listing | `blog-list.html` or `item-list.html` | `Blog` or `ItemList` on `core/query` |
+| Goal | Pattern | Root block |
+|------|---------|------------|
+| FAQ | `faq` (accordion) or `faq-details` (details blocks) | `FAQPage` |
+| How-to | `how-to` | `HowTo`, named from the post title |
+| Single post template | `article-header` | `Article` with `publisher` → `organization` |
+| Site header | `site-header-organization` | `Organization` with `id: organization` |
+| Blog or archive listing | `blog-list` or `item-list` | `Blog` or `ItemList` on `core/query` |
 
 To build a linked site graph in a block theme: put the organization pattern's group in the header template part, the article header in the single template, and a list pattern in home, index and archive templates.
 
@@ -54,7 +56,8 @@ To make the single template describe the whole page, type its main group with th
 
 ## Editing rules
 
-- **Keep markup valid.** The block editor checks saved HTML against what the block would save. Change only the JSON in block comment delimiters (`<!-- wp:group {"schemaOrg":…} -->`) and leave the HTML alone. If you need new blocks, copy them from a pattern file or build them in the editor and copy `wp.data.select('core/editor').getEditedPostContent()`.
+- **Keep markup valid.** The block editor checks saved HTML against what the block would save. Change only the JSON in block comment delimiters (`<!-- wp:group {"schemaOrg":…} -->`) and leave the HTML alone. If you need new blocks, copy them from a pattern or build them in the editor and copy `wp.data.select('core/editor').getEditedPostContent()`.
+- **Save it where it lives.** Posts and pages store the markup in their content. Templates, template parts and synced patterns are stored as posts too, or as files in a block theme. Update them with whatever your tools allow: the editor, the REST API, the theme files, or an ability that updates content.
 - **Type the container, mark the leaves.** Put `type` on the outer group, query or accordion. Put `isProperty` + `propertyName` on the title, date, image or text blocks inside it. Don't type every block.
 - **One entity per thing.** If an inner block should not be part of its typed ancestor, give it its own `type` (a separate entity), or leave it unannotated.
 - **Use the editor's smart defaults where you can.** In the editor, "Quick setup" on groups (FAQ, How-to, Article, Organization), accordions (FAQ, How-to) and query blocks (Blog, Item list) sets up the inner blocks. "Apply suggested mappings to inner blocks" re-runs it after you add blocks.
@@ -62,7 +65,9 @@ To make the single template describe the whole page, type its main group with th
 
 ## Checking the result
 
-1. Load a page that uses the markup and read the JSON-LD:
+1. Run the `schema-org-blocks/get-schema-graph` ability. With the `url` or `post_id` of a published page, it returns the JSON-LD that page outputs, including Yoast SEO's graph. With a draft's `post_id`, or block markup as `content`, it builds the graph from those blocks only, so entities from the template, such as the site Organization, are missing.
+
+   Without the abilities, load the page and read the JSON-LD:
    ```bash
    curl -s https://example.com/sample-post/ | python3 -c "import sys,re,json; [print(json.dumps(json.loads(m),indent=1)) for m in re.findall(r'<script type=\"application/ld\+json\"[^>]*>(.*?)</script>', sys.stdin.read(), re.S)]"
    ```
