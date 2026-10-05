@@ -69,6 +69,22 @@ function get_patterns() : array {
 }
 
 /**
+ * Get the block markup of a pattern.
+ *
+ * @param string $slug Pattern file name in patterns/ without the extension.
+ * @return string|null Markup, or null when the file is not readable.
+ */
+function get_pattern_content( string $slug ) : ?string {
+	$file = SCHEMA_ORG_BLOCKS_PATH . '/patterns/' . $slug . '.html';
+
+	if ( ! is_readable( $file ) ) {
+		return null;
+	}
+
+	return (string) file_get_contents( $file ); // phpcs:ignore WordPress.WP.AlternativeFunctions.file_get_contents_file_get_contents -- Local file.
+}
+
+/**
  * Register the pattern category and the patterns.
  */
 function register_patterns() : void {
@@ -79,14 +95,14 @@ function register_patterns() : void {
 	register_block_pattern_category( CATEGORY, $category );
 
 	foreach ( get_patterns() as $slug => $pattern ) {
-		$file = SCHEMA_ORG_BLOCKS_PATH . '/patterns/' . $slug . '.html';
+		$content = get_pattern_content( $slug );
 
-		if ( ! is_readable( $file ) ) {
+		if ( null === $content ) {
 			continue;
 		}
 
 		$pattern['categories'] = [ CATEGORY ];
-		$pattern['content']    = (string) file_get_contents( $file ); // phpcs:ignore WordPress.WP.AlternativeFunctions.file_get_contents_file_get_contents -- Local file.
+		$pattern['content']    = $content;
 
 		register_block_pattern( 'schema-org-blocks/' . $slug, $pattern );
 	}

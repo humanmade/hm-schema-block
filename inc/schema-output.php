@@ -173,7 +173,17 @@ function collect_rendered_block( $block_content, $block, $instance = null ) {
  * @return array<int, array<string, mixed>>
  */
 function get_graph() : array {
-	$graph = remove_nested_duplicates( array_values( state()['objects'] ) );
+	return build_graph( array_values( state()['objects'] ) );
+}
+
+/**
+ * Build the output graph from collected schema objects.
+ *
+ * @param array<int, array<string, mixed>> $objects Schema objects.
+ * @return array<int, array<string, mixed>>
+ */
+function build_graph( array $objects ) : array {
+	$graph = remove_nested_duplicates( $objects );
 	$graph = link_repeated_entities( $graph );
 
 	if ( ! is_yoast_seo_active() ) {
