@@ -25,6 +25,7 @@ function get_schema_types() : array {
 				'identifier' => [ 'type' => 'Text', 'label' => 'Identifier' ],
 				'alternateName' => [ 'type' => 'Text', 'label' => 'Alternate Name' ],
 				'sameAs' => [ 'type' => 'URL', 'label' => 'Same As' ],
+				'mainEntityOfPage' => [ 'type' => [ 'CreativeWork', 'URL' ], 'label' => 'Main Entity Of Page' ],
 			],
 		],
 		'Article' => [

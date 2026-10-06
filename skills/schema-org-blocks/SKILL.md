@@ -52,7 +52,7 @@ Working examples are registered as block patterns in the "Schema.org" category, 
 
 To build a linked site graph in a block theme: put the organization pattern's group in the header template part, the article header in the single template, and a list pattern in home, index and archive templates.
 
-To make the single template describe the whole page, type its main group with the "Web page" Quick setup (`WebPage`, `@id` and `url` from the post, `isPartOf` the site, `contains: mainEntity`) and wrap the post title and `core/post-content` in a group typed `Article`. The output is WebPage > Article > the entities in the post, plus WebSite and Organization nodes.
+To make the single template describe the whole page, type its main group with the "Web page" Quick setup (`WebPage`, `@id` and `url` from the post, `isPartOf` the site, `contains: mainEntity`) and wrap the post title and `core/post-content` in a group typed `Article`. The output is one page node with the Article and the entities in the post, plus WebSite and Organization nodes. A page type such as FAQPage in the post becomes the page node's type instead of nesting in it, and its questions become the page's `mainEntity`. Without a typed template the plugin adds the WebPage node itself.
 
 ## Editing rules
 
