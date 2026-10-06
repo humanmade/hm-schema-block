@@ -165,7 +165,8 @@ npm run demo:record                    # re-record docs/media (demo.mp4, demo.gi
 
 # PHP linting (requires composer install)
 composer install
-vendor/bin/phpcs        # uses .phpcs.xml.dist (WordPress-Core + WordPress-Docs + WordPress-Extra)
+composer lint           # phpcs, uses .phpcs.xml.dist (WordPress-Core + WordPress-Docs + WordPress-Extra + PHPCompatibilityWP)
+composer format         # phpcbf, auto-fix what it can
 ```
 
 ## Architecture
