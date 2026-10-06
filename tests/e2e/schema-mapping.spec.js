@@ -116,6 +116,24 @@ test.describe( 'Schema.org Block Mapping', () => {
 		).toBeVisible();
 	} );
 
+	test( 'should suggest a source for a property added from the menu', async ( {
+		insertBlock,
+		schemaPanel,
+	} ) => {
+		await insertBlock( { name: 'core/group' } );
+		await schemaPanel.setType( 'Article' );
+
+		await expect(
+			await schemaPanel.addProperty( 'Publisher' )
+		).toHaveValue( 'reference:organization' );
+		await expect(
+			await schemaPanel.addProperty( 'Date Published' )
+		).toHaveValue( 'post:date' );
+		await expect( await schemaPanel.addProperty( 'Keywords' ) ).toHaveValue(
+			'content'
+		);
+	} );
+
 	test( 'should allow mapping a schema property on a typed block', async ( {
 		insertBlock,
 		schemaPanel,
