@@ -13,6 +13,7 @@ use SchemaOrgBlocks\BlockValues;
 use SchemaOrgBlocks\Patterns;
 use SchemaOrgBlocks\SchemaOutput;
 use SchemaOrgBlocks\SchemaTypes;
+use SchemaOrgBlocks\Validation;
 use WP_Block_Template;
 use WP_Error;
 use WP_HTML_Tag_Processor;

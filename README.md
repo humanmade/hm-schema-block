@@ -19,7 +19,7 @@ A WordPress plugin that extends all blocks with schema.org type mapping and stru
 - 🎨 **Smart Defaults**: Automatic mapping for common blocks (image, button, heading, paragraph, accordion, details, post and site blocks)
 - 🌳 **Hierarchical Types**: Support for nested schema types (e.g., Place > Accommodation > Room)
 - 🔄 **Flexible Property Mapping**: Map block attributes, block text, inner blocks text, post fields or site fields to schema properties
-- ✅ **Required Properties**: An Article without an author, publisher or date gets them from its post, and a pre-publish check in the editor flags other required structured data that is missing, such as a question with no answer. Publishing is never blocked
+- ✅ **Validation**: An Article without an author, publisher or date gets them from its post, and a pre-publish check in the editor runs the [schema.org validator](https://github.com/humanmade/schema-org-validator) over the structured data. It flags missing required properties, such as a question with no answer, and invalid values, and offers suggestions for recommended properties. Publishing is never blocked
 - 🚀 **Yoast SEO Integration**: Extends Yoast's schema output when available
 - 📊 **JSON-LD Fallback**: Automatic JSON-LD output when Yoast is not installed
 
@@ -59,7 +59,7 @@ With a typed template, the page is one node, here the FAQPage with its questions
 
 <img src="docs/media/screenshots/pre-publish-check.png" width="280" alt="The Schema.org panel of the pre-publish sidebar, warning that structured data is incomplete because a question has no accepted answer">
 
-Before publishing, the Schema.org panel lists required structured data that is missing, such as a question with no answer. It never blocks publishing.
+Before publishing, the Schema.org panel lists problems in the structured data, such as a question with no answer. Suggestions for recommended properties are behind a link. It never blocks publishing.
 
 <img src="docs/media/screenshots/blog-list-preset.png" width="280" alt="The Schema.org panel of a Query Loop block, with the Blog and Item list Quick setup buttons">
 
@@ -86,6 +86,8 @@ npm run build
 ```
 
 4. Activate the plugin in WordPress admin.
+
+The release ZIP from GitHub includes the `vendor/` folder with the validator library, so it needs no Composer install.
 
 ## Development
 
@@ -386,6 +388,14 @@ add_filter( 'schema_org_blocks_graph', function( $graph ) {
     return $graph;
 } );
 ```
+
+### Validation
+
+The editor's pre-publish check and the `get-schema-graph` ability run the graph through [humanmade/schema-org-validator](https://github.com/humanmade/schema-org-validator). It checks the graph against the schema.org vocabulary and against profiles of extra rules. The plugin loads its own profile, `profiles/schema-org-blocks.json`, with the properties it treats as required for each type, and some of the Google rich result profiles: article, breadcrumb, event, job posting, local business, product snippet, profile page, Q&A page, recipe, review snippet, software app, video, discussion forum, course list and education Q&A. Change the list with the `schema_org_blocks_validation_profiles` filter, which gets an array of `Profile` objects.
+
+Each issue is an `error` (such as a missing required property) or a `warning` (such as an invalid value or a missing recommended property). The panel shows missing recommended properties as suggestions behind a link. Validation only runs for the editor and the ability, never on the front end. If the library is not loaded, no issues are reported.
+
+The library is a Composer dependency, loaded from the plugin's `vendor/` folder unless the site already loads it. Run `composer install` in a checkout.
 
 ### For AI agents
 
