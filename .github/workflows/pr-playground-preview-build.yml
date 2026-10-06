@@ -19,6 +19,7 @@ jobs:
             build-command: |
                 set -euo pipefail
                 npm ci
+                composer install --no-dev --optimize-autoloader --no-interaction
                 sed -i "s/__VERSION__/pr-${{ github.event.pull_request.number }}-$(git rev-parse --short HEAD)/g" schema-org-blocks.php
                 npm run build
                 npm run plugin-zip
