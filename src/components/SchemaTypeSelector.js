@@ -4,9 +4,15 @@
  * @package
  */
 
-import { SelectControl, ToggleControl, Notice } from '@wordpress/components';
+/* eslint-disable @wordpress/no-unsafe-wp-apis -- Layout components are only exported as experimental. */
+
+import {
+	SelectControl,
+	ToggleControl,
+	__experimentalVStack as VStack,
+} from '@wordpress/components';
 import { __, sprintf } from '@wordpress/i18n';
-import { createInterpolateElement, useMemo } from '@wordpress/element';
+import { useMemo } from '@wordpress/element';
 
 const SchemaTypeSelector = ( {
 	value,
@@ -81,76 +87,52 @@ const SchemaTypeSelector = ( {
 	};
 
 	return (
-		<div className="schema-org-blocks-type-selector">
-			{ parentSchemaType && (
-				<Notice status="info" isDismissible={ false }>
-					{ createInterpolateElement(
-						sprintf(
-							/* translators: %s: schema.org type name of the parent block. */
-							__(
-								'Parent block has schema type: %s',
-								'schema-org-blocks'
-							),
-							'<strong>' + parentSchemaType + '</strong>'
-						),
-						{ strong: <strong /> }
-					) }
-				</Notice>
-			) }
-
+		<VStack spacing={ 4 }>
 			{ parentSchemaType && availableProperties.length > 0 && (
 				<>
 					<ToggleControl
 						__nextHasNoMarginBottom
-						label={ __(
-							'Map as property of parent',
-							'schema-org-blocks'
+						label={ sprintf(
+							/* translators: %s: label of the parent block's schema type. */
+							__(
+								'Use as a property of %s',
+								'schema-org-blocks'
+							),
+							schemaTypes?.[ parentSchemaType ]?.label ||
+								parentSchemaType
 						) }
 						checked={ isProperty }
 						onChange={ handlePropertyToggle }
 						help={ __(
-							'Set this block as a specific property of the parent schema object',
+							"This block's content becomes the value of a property of the parent.",
 							'schema-org-blocks'
 						) }
 					/>
 
 					{ isProperty && (
-						<>
-							<SelectControl
-								__next40pxDefaultSize
-								__nextHasNoMarginBottom
-								label={ __(
-									'Property Name',
-									'schema-org-blocks'
-								) }
-								value={ propertyName || '' }
-								options={ [
-									{
-										label: __(
-											'Select a property…',
-											'schema-org-blocks'
-										),
-										value: '',
-									},
-									...availableProperties,
-								] }
-								onChange={ ( prop ) =>
-									onPropertyChange( prop, true )
-								}
-							/>
-							<p
-								style={ {
-									fontSize: '12px',
-									color: '#757575',
-									marginTop: '4px',
-								} }
-							>
-								{ __(
-									"This block's content becomes the value for this property. Save the post to apply.",
-									'schema-org-blocks'
-								) }
-							</p>
-						</>
+						<SelectControl
+							__next40pxDefaultSize
+							__nextHasNoMarginBottom
+							label={ __( 'Property Name', 'schema-org-blocks' ) }
+							value={ propertyName || '' }
+							options={ [
+								{
+									label: __(
+										'Select a property…',
+										'schema-org-blocks'
+									),
+									value: '',
+								},
+								...availableProperties,
+							] }
+							onChange={ ( prop ) =>
+								onPropertyChange( prop, true )
+							}
+							help={ __(
+								'Save the post to apply.',
+								'schema-org-blocks'
+							) }
+						/>
 					) }
 				</>
 			) }
@@ -183,7 +165,7 @@ const SchemaTypeSelector = ( {
 					}
 				/>
 			) }
-		</div>
+		</VStack>
 	);
 };
 

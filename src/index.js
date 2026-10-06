@@ -4,6 +4,8 @@
  * @package
  */
 
+/* eslint-disable @wordpress/no-unsafe-wp-apis -- Layout components are only exported as experimental. */
+
 import { addFilter } from '@wordpress/hooks';
 import { createHigherOrderComponent } from '@wordpress/compose';
 import {
@@ -11,7 +13,10 @@ import {
 	store as blockEditorStore,
 } from '@wordpress/block-editor';
 import { useDispatch, useSelect } from '@wordpress/data';
-import { PanelBody } from '@wordpress/components';
+import {
+	PanelBody,
+	__experimentalVStack as VStack,
+} from '@wordpress/components';
 import { Fragment, useEffect } from '@wordpress/element';
 import { __ } from '@wordpress/i18n';
 
@@ -156,74 +161,79 @@ const withSchemaOrgControls = createHigherOrderComponent( ( BlockEdit ) => {
 				<BlockEdit { ...props } />
 				<InspectorControls>
 					<PanelBody
-						title={ __(
-							'Schema.org Mapping',
-							'schema-org-blocks'
-						) }
+						title={ __( 'Schema.org', 'schema-org-blocks' ) }
 						initialOpen={ false }
 					>
-						<SchemaPresets
-							clientId={ clientId }
-							blockName={ name }
-							schemaOrg={ schemaOrg }
-						/>
-						<SchemaTypeSelector
-							value={ schemaOrg.type }
-							parentSchemaType={ parentType }
-							onChange={ ( type ) =>
-								updateSchemaOrg( {
-									type,
-									// Drop a nesting property the new type doesn't have.
-									...( schemaOrg.contains &&
-									! window.schemaOrgBlocksData
-										?.schemaProperties?.[ type ]?.[
-										schemaOrg.contains
-									]
-										? { contains: undefined }
-										: {} ),
-									// A site-wide id only stays with the same type or a subtype.
-									...( schemaOrg.id &&
-									! (
-										type &&
-										schemaOrg.type &&
-										isTypeOrSubtype( type, schemaOrg.type )
-									)
-										? { id: undefined }
-										: {} ),
-								} )
-							}
-							isProperty={ schemaOrg.isProperty }
-							propertyName={ schemaOrg.propertyName }
-							onPropertyChange={ ( propertyName, isProperty ) =>
-								updateSchemaOrg(
+						<VStack spacing={ 4 }>
+							<SchemaPresets
+								clientId={ clientId }
+								blockName={ name }
+								schemaOrg={ schemaOrg }
+							/>
+							<SchemaTypeSelector
+								value={ schemaOrg.type }
+								parentSchemaType={ parentType }
+								onChange={ ( type ) =>
+									updateSchemaOrg( {
+										type,
+										// Drop a nesting property the new type doesn't have.
+										...( schemaOrg.contains &&
+										! window.schemaOrgBlocksData
+											?.schemaProperties?.[ type ]?.[
+											schemaOrg.contains
+										]
+											? { contains: undefined }
+											: {} ),
+										// A site-wide id only stays with the same type or a subtype.
+										...( schemaOrg.id &&
+										! (
+											type &&
+											schemaOrg.type &&
+											isTypeOrSubtype(
+												type,
+												schemaOrg.type
+											)
+										)
+											? { id: undefined }
+											: {} ),
+									} )
+								}
+								isProperty={ schemaOrg.isProperty }
+								propertyName={ schemaOrg.propertyName }
+								onPropertyChange={ (
+									propertyName,
 									isProperty
-										? {
-												propertyName,
-												isProperty,
-												skipDefaults: false,
-												// Drop a value type the new property does not accept.
-												...( schemaOrg.type &&
-												! propertyAcceptsType(
-													parentType,
+								) =>
+									updateSchemaOrg(
+										isProperty
+											? {
 													propertyName,
-													schemaOrg.type
-												)
-													? {
-															type: null,
-															mappings: {},
-														}
-													: {} ),
-											}
-										: {
-												type: null,
-												mappings: {},
-												propertyName: null,
-												isProperty: false,
-												skipDefaults: true,
-											}
-								)
-							}
-						/>
+													isProperty,
+													skipDefaults: false,
+													// Drop a value type the new property does not accept.
+													...( schemaOrg.type &&
+													! propertyAcceptsType(
+														parentType,
+														propertyName,
+														schemaOrg.type
+													)
+														? {
+																type: null,
+																mappings: {},
+															}
+														: {} ),
+												}
+											: {
+													type: null,
+													mappings: {},
+													propertyName: null,
+													isProperty: false,
+													skipDefaults: true,
+												}
+									)
+								}
+							/>
+						</VStack>
 
 						{ /* Only show property mappings for blocks with their own schema type.
 						     Child blocks that are properties of a parent use the isProperty
@@ -239,15 +249,16 @@ const withSchemaOrgControls = createHigherOrderComponent( ( BlockEdit ) => {
 								}
 							/>
 						) }
-
-						{ schemaOrg.type && (
-							<EntityControls
-								schemaOrg={ schemaOrg }
-								onChange={ updateSchemaOrg }
-							/>
-						) }
 					</PanelBody>
 				</InspectorControls>
+				{ schemaOrg.type && (
+					<InspectorControls group="advanced">
+						<EntityControls
+							schemaOrg={ schemaOrg }
+							onChange={ updateSchemaOrg }
+						/>
+					</InspectorControls>
+				) }
 			</Fragment>
 		);
 	};

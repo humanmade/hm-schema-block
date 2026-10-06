@@ -2,7 +2,14 @@
  * Quick setup buttons: apply a preset type to a container and smart defaults to its inner blocks.
  */
 
-import { BaseControl, Button } from '@wordpress/components';
+/* eslint-disable @wordpress/no-unsafe-wp-apis -- Layout components are only exported as experimental. */
+
+import {
+	BaseControl,
+	Button,
+	__experimentalHStack as HStack,
+	__experimentalVStack as VStack,
+} from '@wordpress/components';
 import { store as blockEditorStore } from '@wordpress/block-editor';
 import { useDispatch, useSelect } from '@wordpress/data';
 import { __ } from '@wordpress/i18n';
@@ -48,48 +55,49 @@ const SchemaPresets = ( { clientId, blockName, schemaOrg } ) => {
 	}
 
 	return (
-		<div className="schema-org-blocks-presets">
+		<VStack spacing={ 4 }>
 			{ showPresets && (
 				<BaseControl
 					__nextHasNoMarginBottom
-					id={ `schema-org-blocks-presets-${ clientId }` }
-					label={ __( 'Quick setup', 'schema-org-blocks' ) }
 					help={ __(
 						'Sets the schema type and maps the inner blocks, e.g. accordion items or details blocks become questions or steps.',
 						'schema-org-blocks'
 					) }
 				>
-					<div className="schema-org-blocks-presets__buttons">
-						{ presets.map( ( [ key, preset ] ) => (
-							<Button
-								key={ key }
-								variant="secondary"
-								size="compact"
-								isPressed={
-									schemaOrg.type === preset.schemaOrg.type
-								}
-								onClick={ () => apply( preset.schemaOrg ) }
-							>
-								{ preset.label }
-							</Button>
-						) ) }
-					</div>
+					<VStack spacing={ 2 }>
+						<BaseControl.VisualLabel>
+							{ __( 'Quick setup', 'schema-org-blocks' ) }
+						</BaseControl.VisualLabel>
+						<HStack wrap spacing={ 2 } justify="flex-start">
+							{ presets.map( ( [ key, preset ] ) => (
+								<Button
+									key={ key }
+									variant="secondary"
+									size="compact"
+									isPressed={
+										schemaOrg.type === preset.schemaOrg.type
+									}
+									onClick={ () => apply( preset.schemaOrg ) }
+								>
+									{ preset.label }
+								</Button>
+							) ) }
+						</HStack>
+					</VStack>
 				</BaseControl>
 			) }
 
 			{ showReapply && (
-				<Button
-					variant="link"
-					onClick={ () => apply( schemaOrg ) }
-					className="schema-org-blocks-presets__reapply"
-				>
-					{ __(
-						'Apply suggested mappings to inner blocks',
-						'schema-org-blocks'
-					) }
-				</Button>
+				<HStack justify="flex-start">
+					<Button variant="link" onClick={ () => apply( schemaOrg ) }>
+						{ __(
+							'Apply suggested mappings to inner blocks',
+							'schema-org-blocks'
+						) }
+					</Button>
+				</HStack>
 			) }
-		</div>
+		</VStack>
 	);
 };
 

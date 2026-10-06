@@ -4,21 +4,6 @@
  * @package SchemaOrgBlocks
  */
 
-.schema-org-blocks-type-selector {
-
-	.components-notice {
-		margin: 0 0 16px;
-	}
-
-	.components-base-control {
-		margin-bottom: 16px;
-
-		&:last-child {
-			margin-bottom: 0;
-		}
-	}
-}
-
 .schema-org-blocks-attribute-mapping {
 
 	&__header {
@@ -55,40 +40,5 @@
 
 	.components-notice {
 		margin: 12px 0;
-	}
-}
-
-// Schema badge in block toolbar (optional visual indicator).
-.schema-org-blocks-badge {
-	display: inline-flex;
-	align-items: center;
-	padding: 2px 8px;
-	background: #007cba;
-	color: #fff;
-	border-radius: 3px;
-	font-size: 11px;
-	font-weight: 500;
-	margin-left: 8px;
-
-	&--property {
-		background: #00a32a;
-	}
-
-	&--inherited {
-		background: #949494;
-	}
-}
-
-.schema-org-blocks-presets {
-	margin-bottom: 16px;
-
-	&__buttons {
-		display: flex;
-		flex-wrap: wrap;
-		gap: 8px;
-	}
-
-	&__reapply {
-		margin-top: 8px;
 	}
 }
