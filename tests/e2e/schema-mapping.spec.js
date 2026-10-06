@@ -57,7 +57,9 @@ test.describe( 'Schema.org Block Mapping', () => {
 		await schemaPanel.setType( 'Article' );
 
 		await expect(
-			schemaPanel.sidebar.getByText( 'Schema Property Mapping' )
+			schemaPanel.sidebar.getByRole( 'heading', {
+				name: 'Schema.org properties',
+			} )
 		).toBeVisible();
 	} );
 
@@ -72,7 +74,7 @@ test.describe( 'Schema.org Block Mapping', () => {
 		await schemaPanel.open();
 
 		await expect(
-			schemaPanel.sidebar.getByText( /Parent block has schema type/ )
+			schemaPanel.sidebar.getByLabel( 'Use as a property of Article' )
 		).toBeVisible();
 	} );
 
@@ -88,11 +90,11 @@ test.describe( 'Schema.org Block Mapping', () => {
 		await schemaPanel.open();
 
 		await expect(
-			schemaPanel.sidebar.getByLabel( 'Map as property of parent' )
+			schemaPanel.sidebar.getByLabel( 'Use as a property of Article' )
 		).toBeChecked();
 		await expect(
-			schemaPanel.sidebar.getByLabel( 'Property Name' )
-		).toHaveValue( 'image' );
+			schemaPanel.sidebar.getByText( 'Property Name', { exact: true } )
+		).toBeVisible();
 
 		const image = await getSchemaTree( imageId );
 		expect( image.schemaOrg ).toMatchObject( {
@@ -109,12 +111,8 @@ test.describe( 'Schema.org Block Mapping', () => {
 		await insertBlock( { name: 'core/group' } );
 		await schemaPanel.setType( 'Article' );
 
-		await schemaPanel.sidebar
-			.getByRole( 'button', { name: 'Add mapping' } )
-			.click();
-
 		await expect(
-			schemaPanel.sidebar.getByLabel( 'Schema Property' ).first()
+			await schemaPanel.addProperty( 'Headline' )
 		).toBeVisible();
 	} );
 
@@ -128,19 +126,13 @@ test.describe( 'Schema.org Block Mapping', () => {
 		} );
 		await schemaPanel.setType( 'CreativeWork' );
 
-		await schemaPanel.sidebar
-			.getByRole( 'button', { name: 'Add mapping' } )
-			.click();
-
-		const schemaPropertySelect = schemaPanel.sidebar
-			.getByLabel( 'Schema Property' )
-			.first();
-		await expect( schemaPropertySelect ).toBeVisible();
-		await schemaPropertySelect.selectOption( 'text' );
-		await expect( schemaPropertySelect ).toHaveValue( 'text' );
+		const sourceSelect = await schemaPanel.addProperty( 'Text' );
+		await expect( sourceSelect ).toBeVisible();
+		await sourceSelect.selectOption( 'content' );
+		await expect( sourceSelect ).toHaveValue( 'content' );
 	} );
 
-	test( 'child isProperty blocks should not show Schema Property Mapping panel', async ( {
+	test( 'child isProperty blocks should not show the Schema.org properties panel', async ( {
 		insertBlock,
 		schemaPanel,
 	} ) => {
@@ -150,11 +142,13 @@ test.describe( 'Schema.org Block Mapping', () => {
 		await insertBlock( { name: 'core/paragraph' }, groupId );
 		await schemaPanel.open();
 		await schemaPanel.sidebar
-			.getByLabel( 'Map as property of parent' )
+			.getByLabel( 'Use as a property of Creative Work' )
 			.check();
 
 		await expect(
-			schemaPanel.sidebar.getByText( 'Schema Property Mapping' )
+			schemaPanel.sidebar.getByRole( 'heading', {
+				name: 'Schema.org properties',
+			} )
 		).toBeHidden();
 	} );
 } );
@@ -516,7 +510,7 @@ test.describe( 'Schema.org Smart Defaults', () => {
 		await newPost();
 	} );
 
-	test( 'turning off "Map as property of parent" stays off', async ( {
+	test( 'turning off "Use as a property of" stays off', async ( {
 		editor,
 		insertBlock,
 		schemaPanel,
@@ -537,7 +531,7 @@ test.describe( 'Schema.org Smart Defaults', () => {
 
 		await schemaPanel.open();
 		const toggle = schemaPanel.sidebar.getByLabel(
-			'Map as property of parent'
+			'Use as a property of Article'
 		);
 		await toggle.uncheck();
 		await expect( toggle ).not.toBeChecked();
