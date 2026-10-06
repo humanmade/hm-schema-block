@@ -29,6 +29,7 @@ import {
 } from './utils/smart-defaults';
 
 import './variations';
+import './pre-publish';
 import './editor.scss';
 
 /**
