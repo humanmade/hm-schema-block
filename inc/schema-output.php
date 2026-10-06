@@ -214,7 +214,8 @@ function build_graph( array $objects, int $post_id = 0 ) : array {
  * The page node is the WebPage (or WebPage subtype) with the page's @id or url; with
  * `$owns_page` one is added when missing. Page subtypes such as FAQPage, at the top level or
  * nested in the page node, are merged into it. Main entities the page type does not accept move
- * to `hasPart`. With `$owns_page`, the only entity of the page becomes its main entity.
+ * to `hasPart`. With `$owns_page`, the only entity of the page becomes its main entity, and the
+ * creative works left over, such as an Article beside an FAQPage, are marked as part of the page.
  *
  * @param array<int, array<string, mixed>> $graph     Schema objects.
  * @param string                           $page_id   Permalink of the page, used as its @id.
@@ -262,6 +263,10 @@ function assemble_page( array $graph, string $page_id, bool $owns_page ) : array
 
 	if ( $owns_page && ! isset( $hub['mainEntity'] ) ) {
 		[ $hub, $graph ] = link_main_entity( $hub, $graph, $page_id );
+	}
+
+	if ( $owns_page ) {
+		$graph = link_page_parts( $graph, $page_id );
 	}
 
 	$graph[ $index ] = $hub;
@@ -540,6 +545,33 @@ function link_main_entity( array $hub, array $graph, string $page_id ) : array {
 	$hub[ $property ] = add_values( $hub[ $property ] ?? null, [ '@id' => $id ] );
 
 	return [ $hub, $graph ];
+}
+
+/**
+ * Mark the creative works left at the top level as part of the page.
+ *
+ * Applies to CreativeWork nodes and their subtypes without an `isPartOf`. Site-wide entities
+ * (an @id under the home URL's fragment), such as the WebSite, are left alone.
+ *
+ * @param array<int, array<string, mixed>> $graph   Top-level nodes other than the page node.
+ * @param string                           $page_id Permalink of the page.
+ * @return array<int, array<string, mixed>>
+ */
+function link_page_parts( array $graph, string $page_id ) : array {
+	foreach ( $graph as $key => $node ) {
+		if ( ! is_array( $node ) || isset( $node['isPartOf'] ) || 0 === strpos( (string) ( $node['@id'] ?? '' ), home_url( '/#' ) ) ) {
+			continue;
+		}
+
+		foreach ( get_node_types( $node ) as $type ) {
+			if ( 'CreativeWork' === $type || SchemaTypes\is_subtype_of( $type, 'CreativeWork' ) ) {
+				$graph[ $key ]['isPartOf'] = [ '@id' => $page_id ];
+				break;
+			}
+		}
+	}
+
+	return $graph;
 }
 
 /**
