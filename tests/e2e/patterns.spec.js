@@ -256,6 +256,7 @@ test.describe( 'Schema.org patterns', () => {
 					'@type': 'Article',
 					'@id': `${ post.link }#article`,
 					mainEntityOfPage: { '@id': post.link },
+					isPartOf: { '@id': post.link },
 					url: post.link,
 					publisher: { '@id': `${ site.home }#organization` },
 					keywords: site.category.name,
@@ -269,6 +270,7 @@ test.describe( 'Schema.org patterns', () => {
 						url: expect.stringMatching( /^https?:\/\// ),
 					},
 					datePublished: expect.stringMatching( ISO_DATE ),
+					dateModified: expect.stringMatching( ISO_DATE ),
 					image: site.image.source_url,
 				} );
 			},
