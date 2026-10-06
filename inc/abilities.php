@@ -164,7 +164,7 @@ function register_abilities() : void {
 		'schema-org-blocks/get-schema-graph',
 		[
 			'label'               => __( 'Get structured data graph', 'schema-org-blocks' ),
-			'description'         => __( 'Returns the schema.org JSON-LD graph for a page, to check structured data after editing. Pass the url or post_id of a published page to read what the page outputs, including the template. For a draft, or block markup passed as content, the graph is built from those blocks only and leaves out template entities such as a typed template block, unless with_template is set. With a post_id it is joined into one WebPage node for the post. Every result has a missing list: required properties, such as an Article\'s author or a Question\'s accepted answer, that no node sets.', 'schema-org-blocks' ),
+			'description'         => __( 'Returns the schema.org JSON-LD graph for a page, to check structured data after editing. Pass the url or post_id of a published page to read what the page outputs, including the template. For a draft, or block markup passed as content, the graph is built from those blocks only and leaves out template entities such as a typed template block, unless with_template is set. With a post_id it is joined into one WebPage node for the post. Every result has an issues list from the schema.org validator: errors, such as a missing required property like a Question\'s accepted answer, and warnings, such as an invalid value or a missing recommended property. It checks the schema.org vocabulary, this plugin\'s required properties and Google\'s rich result requirements.', 'schema-org-blocks' ),
 			'category'            => CATEGORY,
 			'execute_callback'    => __NAMESPACE__ . '\\get_schema_graph',
 			'permission_callback' => __NAMESPACE__ . '\\can_get_schema_graph',
@@ -208,14 +208,28 @@ function register_abilities() : void {
 						'type'  => 'array',
 						'items' => [ 'type' => 'object' ],
 					],
-					'missing' => [
+					'issues'  => [
 						'type'        => 'array',
-						'description' => __( 'Required properties the graph does not set. A property that is a list means one of them is needed.', 'schema-org-blocks' ),
+						'description' => __( 'Problems the validator found, errors first. A warning with the code missing_recommended is a suggestion, not a problem.', 'schema-org-blocks' ),
 						'items'       => [
 							'type'       => 'object',
 							'properties' => [
-								'type'     => [ 'type' => 'string' ],
-								'property' => [ 'type' => [ 'string', 'array' ] ],
+								'severity' => [
+									'type' => 'string',
+									'enum' => [ 'error', 'warning' ],
+								],
+								'code'     => [ 'type' => 'string' ],
+								'message'  => [ 'type' => 'string' ],
+								'type'     => [ 'type' => [ 'string', 'null' ] ],
+								'property' => [ 'type' => [ 'string', 'null' ] ],
+								'path'     => [
+									'type'        => 'string',
+									'description' => __( 'JSON pointer to the value the issue is about, in the graph wrapped as an object with @graph.', 'schema-org-blocks' ),
+								],
+								'source'   => [
+									'type'        => 'string',
+									'description' => __( 'The id of the profile that raised the issue, or schema.org.', 'schema-org-blocks' ),
+								],
 								'label'    => [ 'type' => 'string' ],
 							],
 						],
@@ -474,10 +488,10 @@ function get_schema_graph( $input = null ) {
 
 	$graph  = SchemaOutput\build_graph( array_values( $objects ), (int) $post_id );
 	$result = [
-		'source'  => 'content',
-		'graph'   => $graph,
-		'missing' => SchemaOutput\get_missing( $graph ),
-		'note'    => $note,
+		'source' => 'content',
+		'graph'  => $graph,
+		'issues' => Validation\validate( $graph ),
+		'note'   => $note,
 	];
 
 	if ( null !== $post_id ) {
@@ -517,10 +531,10 @@ function get_page_graph( string $url ) {
 	$graph = parse_json_ld( wp_remote_retrieve_body( $response ) );
 
 	return [
-		'source'  => 'page',
-		'url'     => $url,
-		'graph'   => $graph,
-		'missing' => SchemaOutput\get_missing( $graph ),
+		'source' => 'page',
+		'url'    => $url,
+		'graph'  => $graph,
+		'issues' => Validation\validate( $graph ),
 	];
 }
 

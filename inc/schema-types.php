@@ -55,7 +55,6 @@ function get_schema_types() : array {
 		'Article'         => [
 			'label'      => 'Article',
 			'parent'     => 'CreativeWork',
-			'required'   => [ 'headline', 'author', 'publisher', 'datePublished' ],
 			'properties' => [
 				'headline'      => [
 					'type'  => 'Text',
@@ -152,7 +151,6 @@ function get_schema_types() : array {
 		'FAQPage'         => [
 			'label'      => 'FAQ Page',
 			'parent'     => 'WebPage',
-			'required'   => [ 'mainEntity' ],
 			'properties' => [
 				'mainEntity' => [
 					'type'  => 'Question',
@@ -168,7 +166,6 @@ function get_schema_types() : array {
 		'Question'        => [
 			'label'      => 'Question',
 			'parent'     => 'Comment',
-			'required'   => [ 'name', 'acceptedAnswer' ],
 			'properties' => [
 				'acceptedAnswer'  => [
 					'type'  => [ 'Answer', 'ItemList' ],
@@ -183,13 +180,11 @@ function get_schema_types() : array {
 		'Answer'          => [
 			'label'      => 'Answer',
 			'parent'     => 'Comment',
-			'required'   => [ 'text' ],
 			'properties' => [],
 		],
 		'HowTo'           => [
 			'label'      => 'How-to',
 			'parent'     => 'CreativeWork',
-			'required'   => [ 'name', 'step' ],
 			'properties' => [
 				'step'      => [
 					'type'  => [ 'HowToStep', 'HowToSection', 'Text' ],
@@ -216,13 +211,11 @@ function get_schema_types() : array {
 		'HowToStep'       => [
 			'label'      => 'How-to Step',
 			'parent'     => 'CreativeWork',
-			'required'   => [ 'text' ],
 			'properties' => [],
 		],
 		'WebSite'         => [
 			'label'      => 'Web Site',
 			'parent'     => 'CreativeWork',
-			'required'   => [ 'name', 'url' ],
 			'properties' => [],
 		],
 		'Blog'            => [
@@ -238,7 +231,6 @@ function get_schema_types() : array {
 		'ItemList'        => [
 			'label'      => 'Item List',
 			'parent'     => 'Thing',
-			'required'   => [ 'itemListElement' ],
 			'properties' => [
 				'itemListElement' => [
 					'type'  => [ 'ListItem', 'Thing', 'Text' ],
@@ -267,7 +259,6 @@ function get_schema_types() : array {
 		'Organization'    => [
 			'label'      => 'Organization',
 			'parent'     => 'Thing',
-			'required'   => [ 'name' ],
 			'properties' => [
 				'logo'         => [
 					'type'  => [ 'ImageObject', 'URL' ],
@@ -298,7 +289,6 @@ function get_schema_types() : array {
 		'LocalBusiness'   => [
 			'label'      => 'Local Business',
 			'parent'     => 'Organization',
-			'required'   => [ 'name', 'address' ],
 			'properties' => [
 				'priceRange'   => [
 					'type'  => 'Text',
@@ -313,7 +303,6 @@ function get_schema_types() : array {
 		'Person'          => [
 			'label'      => 'Person',
 			'parent'     => 'Thing',
-			'required'   => [ 'name' ],
 			'properties' => [
 				'givenName'  => [
 					'type'  => 'Text',
@@ -385,7 +374,6 @@ function get_schema_types() : array {
 		'Product'         => [
 			'label'      => 'Product',
 			'parent'     => 'Thing',
-			'required'   => [ 'name', [ 'offers', 'review', 'aggregateRating' ] ],
 			'properties' => [
 				'brand'           => [
 					'type'  => [ 'Brand', 'Organization' ],
@@ -412,7 +400,6 @@ function get_schema_types() : array {
 		'Event'           => [
 			'label'      => 'Event',
 			'parent'     => 'Thing',
-			'required'   => [ 'name', 'startDate', 'location' ],
 			'properties' => [
 				'startDate' => [
 					'type'  => 'DateTime',
@@ -439,7 +426,6 @@ function get_schema_types() : array {
 		'ImageObject'     => [
 			'label'      => 'Image Object',
 			'parent'     => 'MediaObject',
-			'required'   => [ [ 'contentUrl', 'url' ] ],
 			'properties' => [
 				'contentUrl' => [
 					'type'  => 'URL',
@@ -534,7 +520,6 @@ function get_schema_types() : array {
 		'Offer'           => [
 			'label'      => 'Offer',
 			'parent'     => 'Thing',
-			'required'   => [ 'price', 'priceCurrency' ],
 			'properties' => [
 				'price'         => [
 					'type'  => 'Number',
@@ -557,7 +542,6 @@ function get_schema_types() : array {
 		'Review'          => [
 			'label'      => 'Review',
 			'parent'     => 'CreativeWork',
-			'required'   => [ 'author', 'reviewRating' ],
 			'properties' => [
 				'reviewRating' => [
 					'type'  => 'Rating',
@@ -572,7 +556,6 @@ function get_schema_types() : array {
 		'Rating'          => [
 			'label'      => 'Rating',
 			'parent'     => 'Thing',
-			'required'   => [ 'ratingValue' ],
 			'properties' => [
 				'ratingValue' => [
 					'type'  => 'Number',
@@ -591,7 +574,6 @@ function get_schema_types() : array {
 		'AggregateRating' => [
 			'label'      => 'Aggregate Rating',
 			'parent'     => 'Rating',
-			'required'   => [ 'ratingValue', [ 'ratingCount', 'reviewCount' ] ],
 			'properties' => [
 				'reviewCount' => [
 					'type'  => 'Number',
@@ -628,53 +610,6 @@ function get_type_properties( string $type ) : array {
 	}
 
 	return $properties;
-}
-
-/**
- * Get the properties a type needs for rich results, including those of its parent types.
- *
- * Schema.org has no required properties. These follow Google's rich result requirements, plus
- * author and publisher for articles. An entry that is an array means any one of those
- * properties will do.
- *
- * @param string $type Schema type name.
- * @return array<int, string|array<int, string>>
- */
-function get_required_properties( string $type ) : array {
-	$all_types = get_schema_types();
-	$required  = [];
-	$seen      = [];
-
-	while ( $type && isset( $all_types[ $type ] ) && ! isset( $seen[ $type ] ) ) {
-		$seen[ $type ] = true;
-
-		foreach ( $all_types[ $type ]['required'] ?? [] as $property ) {
-			$key = wp_json_encode( $property );
-
-			if ( ! isset( $required[ $key ] ) ) {
-				$required[ $key ] = $property;
-			}
-		}
-
-		$type = $all_types[ $type ]['parent'] ?? null;
-	}
-
-	return array_values( $required );
-}
-
-/**
- * Get the required properties of every type.
- *
- * @return array<string, array<int, string|array<int, string>>>
- */
-function get_all_required_properties() : array {
-	$required = [];
-
-	foreach ( array_keys( get_schema_types() ) as $type ) {
-		$required[ $type ] = get_required_properties( $type );
-	}
-
-	return $required;
 }
 
 /**
