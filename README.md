@@ -37,6 +37,10 @@ The FAQ block comes set up as an FAQPage.
 
 Each accordion item is a Question, and its panel is the answer.
 
+<img src="docs/media/screenshots/properties-panel.png" width="280" alt="The Schema.org properties panel of an Article group, with the URL, Date Published, Publisher and Language properties each set to a source">
+
+Each property of a typed block gets a Source: a block attribute, block text, a post or site field, or a link to another entity.
+
 ![A published post with two questions, next to a panel that shows its FAQPage JSON-LD](docs/media/screenshots/front-end-faq-json-ld.png)
 
 The published post with its FAQPage structured data (JSON-LD shown in a demo side panel).
@@ -45,13 +49,17 @@ The published post with its FAQPage structured data (JSON-LD shown in a demo sid
 
 In the site editor, the Web page Quick setup types the main group of a template.
 
-<img src="docs/media/screenshots/graph-controls.png" width="248" alt="The Entity ID field and the Nest inner entities as menu, set to Main Entity">
+<img src="docs/media/screenshots/graph-controls.png" width="280" alt="The Entity ID field and the Nest inner entities as menu, set to Main Entity">
 
 The graph settings give an entity an ID and choose how it nests the entities inside it.
 
-![The same post next to its JSON-LD: a WebPage whose main entity is an Article that contains the FAQPage, plus WebSite and Organization nodes](docs/media/screenshots/front-end-page-graph.png)
+![The same post next to its JSON-LD: one FAQPage page node with its questions and the Article, plus WebSite and Organization nodes](docs/media/screenshots/front-end-page-graph.png)
 
-With a typed template, the page has one connected graph (JSON-LD shown in a demo side panel).
+With a typed template, the page is one node, here the FAQPage with its questions as `mainEntity` and the Article as `hasPart`, linked to the WebSite and Organization nodes (JSON-LD shown in a demo side panel).
+
+<img src="docs/media/screenshots/pre-publish-check.png" width="280" alt="The Schema.org panel of the pre-publish sidebar, warning that structured data is incomplete because a question has no accepted answer">
+
+Before publishing, the Schema.org panel lists required structured data that is missing, such as a question with no answer. It never blocks publishing.
 
 <img src="docs/media/screenshots/blog-list-preset.png" width="280" alt="The Schema.org panel of a Query Loop block, with the Blog and Item list Quick setup buttons">
 
