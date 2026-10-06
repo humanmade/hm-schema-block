@@ -12,8 +12,7 @@ import { useEffect, useState } from '@wordpress/element';
 import { __, sprintf } from '@wordpress/i18n';
 import { registerPlugin } from '@wordpress/plugins';
 
-const ABILITY_PATH =
-	'/wp-abilities/v1/abilities/schema-org-blocks/get-schema-graph/run';
+const GRAPH_PATH = '/schema-org-blocks/v1/graph';
 
 /**
  * Get the label of a property, falling back to its name.
@@ -49,19 +48,22 @@ function describeProperty( type, property ) {
 }
 
 /**
- * Ask the get-schema-graph ability for the graph of the unsaved post and its template.
+ * Ask for the graph of the unsaved post and its template, as the get-schema-graph ability does.
  *
- * @return {Promise<Object>} Ability result with `graph` and `missing`.
+ * @return {Promise<Object>} Result with `graph` and `missing`.
  */
 function fetchGraph() {
 	const editor = select( 'core/editor' );
-	const query = new URLSearchParams( {
-		'input[content]': editor.getEditedPostContent(),
-		'input[post_id]': editor.getCurrentPostId(),
-		'input[with_template]': 'true',
-	} );
 
-	return apiFetch( { path: `${ ABILITY_PATH }?${ query }` } );
+	return apiFetch( {
+		path: GRAPH_PATH,
+		method: 'POST',
+		data: {
+			content: editor.getEditedPostContent(),
+			post_id: editor.getCurrentPostId(),
+			with_template: true,
+		},
+	} );
 }
 
 /**

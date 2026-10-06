@@ -29,6 +29,7 @@ const CATEGORY = 'schema-org-blocks';
 function bootstrap() : void {
 	add_action( 'wp_abilities_api_categories_init', __NAMESPACE__ . '\\register_category' );
 	add_action( 'wp_abilities_api_init', __NAMESPACE__ . '\\register_abilities' );
+	add_action( 'rest_api_init', __NAMESPACE__ . '\\register_graph_route' );
 }
 
 /**
@@ -224,6 +225,69 @@ function register_abilities() : void {
 			'meta'                => get_meta(),
 		]
 	);
+}
+
+/**
+ * Register the REST route the editor uses to check the graph of unsaved content.
+ *
+ * The get-schema-graph ability only accepts GET, which puts the content in the URL. This route
+ * takes the same input as a POST body.
+ */
+function register_graph_route() : void {
+	register_rest_route(
+		'schema-org-blocks/v1',
+		'/graph',
+		[
+			'methods'             => 'POST',
+			'callback'            => __NAMESPACE__ . '\\get_graph_for_request',
+			'permission_callback' => static fn ( $request ) => can_get_schema_graph( get_request_input( $request ) ),
+			'args'                => [
+				'content'       => [
+					'type'        => 'string',
+					'description' => __( 'Block markup to build the graph from.', 'schema-org-blocks' ),
+				],
+				'post_id'       => [
+					'type'        => 'integer',
+					'description' => __( 'ID of a post. With content, the post that post fields read from.', 'schema-org-blocks' ),
+				],
+				'with_template' => [
+					'type'        => 'boolean',
+					'default'     => false,
+					'description' => __( 'With content and post_id in a block theme, build the graph from the post\'s block template.', 'schema-org-blocks' ),
+				],
+			],
+		]
+	);
+}
+
+/**
+ * Get the ability input from the parameters of a request.
+ *
+ * @param \WP_REST_Request $request Request.
+ * @return array<string, mixed>
+ */
+function get_request_input( $request ) : array {
+	$input = [];
+
+	foreach ( [ 'content', 'post_id', 'with_template' ] as $key ) {
+		$value = $request->get_param( $key );
+
+		if ( null !== $value ) {
+			$input[ $key ] = $value;
+		}
+	}
+
+	return $input;
+}
+
+/**
+ * Get the schema graph for a REST request.
+ *
+ * @param \WP_REST_Request $request Request.
+ * @return array<string, mixed>|WP_Error
+ */
+function get_graph_for_request( $request ) {
+	return get_schema_graph( get_request_input( $request ) );
 }
 
 /**

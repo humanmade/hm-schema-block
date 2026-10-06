@@ -358,6 +358,47 @@ test.describe( 'Required properties', () => {
 		} );
 	} );
 
+	test.describe( 'graph route', () => {
+		const ROUTE = '/schema-org-blocks/v1/graph';
+		const padding = `<!-- wp:paragraph --><p>${ 'x'.repeat(
+			25000
+		) }</p><!-- /wp:paragraph -->`;
+
+		test( 'takes content over 20,000 characters in a POST body', async ( {
+			requestUtils,
+		} ) => {
+			const content = INCOMPLETE_FAQ + padding;
+			expect( content.length ).toBeGreaterThan( 20000 );
+
+			const result = await requestUtils.rest( {
+				method: 'POST',
+				path: ROUTE,
+				data: { content },
+			} );
+
+			expect( result.source ).toBe( 'content' );
+			expect( result.graph ).toContainEqual(
+				expect.objectContaining( { '@type': 'FAQPage' } )
+			);
+			expect( result.missing ).toEqual( [ MISSING_ANSWER ] );
+		} );
+
+		test( 'refuses a request without edit rights', async ( {
+			playwright,
+			baseURL,
+		} ) => {
+			const anonymous = await playwright.request.newContext( {
+				baseURL,
+			} );
+			const response = await anonymous.post( `/?rest_route=${ ROUTE }`, {
+				data: { content: INCOMPLETE_FAQ, post_id: 1 },
+			} );
+			await anonymous.dispose();
+
+			expect( response.status() ).toBe( 401 );
+		} );
+	} );
+
 	test.describe( 'pre-publish panel', () => {
 		const insertMarkup = ( page, markup ) =>
 			page.evaluate( ( content ) => {
