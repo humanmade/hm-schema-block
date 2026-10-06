@@ -214,7 +214,8 @@ function build_graph( array $objects, int $post_id = 0 ) : array {
  * The page node is the WebPage (or WebPage subtype) with the page's @id or url; with
  * `$owns_page` one is added when missing. Page subtypes such as FAQPage, at the top level or
  * nested in the page node, are merged into it. Main entities the page type does not accept move
- * to `hasPart`. With `$owns_page`, the only entity of the page becomes its main entity.
+ * to `hasPart`. With `$owns_page`, the only entity of the page becomes its main entity, and the
+ * creative works left over, such as an Article beside an FAQPage, are marked as part of the page.
  *
  * @param array<int, array<string, mixed>> $graph     Schema objects.
  * @param string                           $page_id   Permalink of the page, used as its @id.
@@ -261,6 +262,10 @@ function assemble_page( array $graph, string $page_id, bool $owns_page ) : array
 
 	if ( $owns_page && ! isset( $hub['mainEntity'] ) ) {
 		[ $hub, $graph ] = link_main_entity( $hub, $graph, $page_id );
+	}
+
+	if ( $owns_page ) {
+		$graph = link_page_parts( $graph, $page_id );
 	}
 
 	$graph[ $index ] = $hub;
@@ -542,6 +547,33 @@ function link_main_entity( array $hub, array $graph, string $page_id ) : array {
 }
 
 /**
+ * Mark the creative works left at the top level as part of the page.
+ *
+ * Applies to CreativeWork nodes and their subtypes without an `isPartOf`. Site-wide entities
+ * (an @id under the home URL's fragment), such as the WebSite, are left alone.
+ *
+ * @param array<int, array<string, mixed>> $graph   Top-level nodes other than the page node.
+ * @param string                           $page_id Permalink of the page.
+ * @return array<int, array<string, mixed>>
+ */
+function link_page_parts( array $graph, string $page_id ) : array {
+	foreach ( $graph as $key => $node ) {
+		if ( ! is_array( $node ) || isset( $node['isPartOf'] ) || 0 === strpos( (string) ( $node['@id'] ?? '' ), home_url( '/#' ) ) ) {
+			continue;
+		}
+
+		foreach ( get_node_types( $node ) as $type ) {
+			if ( 'CreativeWork' === $type || SchemaTypes\is_subtype_of( $type, 'CreativeWork' ) ) {
+				$graph[ $key ]['isPartOf'] = [ '@id' => $page_id ];
+				break;
+			}
+		}
+	}
+
+	return $graph;
+}
+
+/**
  * Remove top-level objects that also appear nested inside another object.
  *
  * Entities inside a template entity, such as an FAQ in the post content of a typed single
@@ -731,6 +763,62 @@ function get_graph_ids( array $graph ) : array {
  */
 function is_yoast_seo_active() : bool {
 	return defined( 'WPSEO_VERSION' );
+}
+
+/**
+ * List the required properties the nodes of a graph are missing.
+ *
+ * Every typed node is checked, nested ones too. A property that is a reference to another node
+ * (an object with an @id) counts as set. A property is missing when it is absent or empty.
+ *
+ * @param array<int, array<string, mixed>> $graph Schema objects.
+ * @return array<int, array{type: string, property: string|array<int, string>, label: string}> The type and label of the node, and the missing property, or the properties of which one is needed.
+ */
+function get_missing( array $graph ) : array {
+	$missing = [];
+
+	$walk = static function ( $value ) use ( &$walk, &$missing ) : void {
+		if ( ! is_array( $value ) ) {
+			return;
+		}
+
+		foreach ( get_node_types( $value ) as $type ) {
+			foreach ( SchemaTypes\get_required_properties( $type ) as $required ) {
+				$is_set = array_filter( (array) $required, static fn ( $property ) => isset( $value[ $property ] ) && ! BlockExtensions\is_empty_value( $value[ $property ] ) );
+
+				if ( ! $is_set ) {
+					$missing[] = [
+						'type'     => $type,
+						'property' => $required,
+						'label'    => get_node_label( $value, $type ),
+					];
+				}
+			}
+		}
+
+		array_map( $walk, $value );
+	};
+
+	$walk( $graph );
+
+	return array_values( array_unique( $missing, SORT_REGULAR ) );
+}
+
+/**
+ * Get a name to show for a node: its name, headline or @id, else its type.
+ *
+ * @param array<string, mixed> $node Schema object.
+ * @param string               $type Type of the node.
+ * @return string
+ */
+function get_node_label( array $node, string $type ) : string {
+	foreach ( [ 'name', 'headline', '@id' ] as $key ) {
+		if ( isset( $node[ $key ] ) && is_string( $node[ $key ] ) && '' !== $node[ $key ] ) {
+			return $node[ $key ];
+		}
+	}
+
+	return $type;
 }
 
 /**

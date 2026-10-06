@@ -19,6 +19,7 @@ A WordPress plugin that extends all blocks with schema.org type mapping and stru
 - 🎨 **Smart Defaults**: Automatic mapping for common blocks (image, button, heading, paragraph, accordion, details, post and site blocks)
 - 🌳 **Hierarchical Types**: Support for nested schema types (e.g., Place > Accommodation > Room)
 - 🔄 **Flexible Property Mapping**: Map block attributes, block text, inner blocks text, post fields or site fields to schema properties
+- ✅ **Required Properties**: An Article without an author, publisher or date gets them from its post, and a pre-publish check in the editor flags other required structured data that is missing, such as a question with no answer. Publishing is never blocked
 - 🚀 **Yoast SEO Integration**: Extends Yoast's schema output when available
 - 📊 **JSON-LD Fallback**: Automatic JSON-LD output when Yoast is not installed
 

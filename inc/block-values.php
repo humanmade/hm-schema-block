@@ -367,12 +367,40 @@ function get_template_part_blocks( string $theme, string $slug ) : array {
  * @return array<int, array<string, mixed>>
  */
 function get_post_content_blocks( int $post_id ) : array {
-	static $parsed = [];
+	$blocks = post_content_cache( $post_id );
 
-	if ( ! isset( $parsed[ $post_id ] ) ) {
-		$post               = get_post( $post_id );
-		$parsed[ $post_id ] = $post && ! post_password_required( $post ) ? parse_blocks( $post->post_content ) : [];
+	if ( null === $blocks ) {
+		$post   = get_post( $post_id );
+		$blocks = $post && ! post_password_required( $post ) ? parse_blocks( $post->post_content ) : [];
+		post_content_cache( $post_id, $blocks );
 	}
 
-	return $parsed[ $post_id ];
+	return $blocks;
+}
+
+/**
+ * Set the blocks core/post-content resolves to for a post, for the rest of the request.
+ *
+ * @param int                              $post_id Post ID.
+ * @param array<int, array<string, mixed>> $blocks  Parsed blocks, e.g. unsaved content.
+ */
+function set_post_content_blocks( int $post_id, array $blocks ) : void {
+	post_content_cache( $post_id, $blocks );
+}
+
+/**
+ * Get or set the cached blocks of a post's content.
+ *
+ * @param int                                   $post_id Post ID.
+ * @param array<int, array<string, mixed>>|null $blocks  Blocks to cache, or null to only read.
+ * @return array<int, array<string, mixed>>|null The cached blocks, or null when there are none.
+ */
+function post_content_cache( int $post_id, ?array $blocks = null ) : ?array {
+	static $parsed = [];
+
+	if ( null !== $blocks ) {
+		$parsed[ $post_id ] = $blocks;
+	}
+
+	return $parsed[ $post_id ] ?? null;
 }

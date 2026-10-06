@@ -19,6 +19,7 @@ use SchemaOrgBlocks\BlockValues;
 use SchemaOrgBlocks\DynamicValues;
 use SchemaOrgBlocks\SchemaTypes;
 use WP_Block;
+use WP_Post;
 use WP_Query;
 
 /**
@@ -226,7 +227,8 @@ function get_query_post_ids( array $block, array $context ) : array {
  * Values come from the block's own mappings, then from its property blocks. A property block
  * with its own type becomes a nested object. Several values for one property produce an
  * array; for itemListElement each is wrapped in a ListItem with its position. Property block
- * values replace a mapping for the same property.
+ * values replace a mapping for the same property. Article properties still unset are then
+ * filled from the post in context by `fill_inferred()`.
  *
  * @param array<string, mixed> $block   Parsed block.
  * @param array<string, mixed> $context Block context.
@@ -279,6 +281,8 @@ function build_schema_object( array $block, array $context = [] ) : array {
 		$object[ $property ] = 1 === count( $values ) && 'itemListElement' !== $property ? $values[0] : $values;
 	}
 
+	$object = fill_inferred( $object, $context );
+
 	$has_properties = count( $object ) > 1;
 
 	if ( $has_properties && null !== $config['id'] ) {
@@ -286,6 +290,45 @@ function build_schema_object( array $block, array $context = [] ) : array {
 	}
 
 	return $has_properties ? $object : [];
+}
+
+/**
+ * Fill the properties an article needs from the post in context, where nothing set them.
+ *
+ * Applies to Article and its subtypes when there is a post, from the context or else the current
+ * post: headline from the title, datePublished, dateModified, image from the featured image,
+ * publisher as a reference to the site Organization and author as the post author's Person.
+ * An object with no properties of its own stays empty, so it is not output.
+ *
+ * @param array<string, mixed> $object  Schema object.
+ * @param array<string, mixed> $context Block context.
+ * @return array<string, mixed>
+ */
+function fill_inferred( array $object, array $context ) : array {
+	$type    = (string) ( $object['@type'] ?? '' );
+	$post_id = DynamicValues\get_post_id( $context );
+	$post    = $post_id ? get_post( $post_id ) : null;
+
+	if ( count( $object ) < 2 || ! $post instanceof WP_Post || ( 'Article' !== $type && ! SchemaTypes\is_subtype_of( $type, 'Article' ) ) ) {
+		return $object;
+	}
+
+	$inferred = [
+		'headline'      => DynamicValues\get_post_field( 'title', $post ),
+		'datePublished' => DynamicValues\get_post_field( 'date', $post ),
+		'dateModified'  => DynamicValues\get_post_field( 'modified', $post ),
+		'image'         => DynamicValues\get_post_field( 'image', $post ),
+		'publisher'     => [ '@id' => get_entity_id_url( 'organization' ) ],
+		'author'        => DynamicValues\get_author_person( $post ),
+	];
+
+	foreach ( $inferred as $property => $value ) {
+		if ( ! isset( $object[ $property ] ) && ! is_empty_value( $value ) ) {
+			$object[ $property ] = $value;
+		}
+	}
+
+	return $object;
 }
 
 /**

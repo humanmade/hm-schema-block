@@ -36,6 +36,7 @@ import {
 } from './utils/smart-defaults';
 
 import './variations';
+import './pre-publish';
 
 /**
  * Add schemaOrg attribute to all blocks.

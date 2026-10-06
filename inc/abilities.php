@@ -9,9 +9,11 @@
 namespace SchemaOrgBlocks\Abilities;
 
 use SchemaOrgBlocks\BlockExtensions;
+use SchemaOrgBlocks\BlockValues;
 use SchemaOrgBlocks\Patterns;
 use SchemaOrgBlocks\SchemaOutput;
 use SchemaOrgBlocks\SchemaTypes;
+use WP_Block_Template;
 use WP_Error;
 use WP_HTML_Tag_Processor;
 use WP_Post;
@@ -27,6 +29,7 @@ const CATEGORY = 'schema-org-blocks';
 function bootstrap() : void {
 	add_action( 'wp_abilities_api_categories_init', __NAMESPACE__ . '\\register_category' );
 	add_action( 'wp_abilities_api_init', __NAMESPACE__ . '\\register_abilities' );
+	add_action( 'rest_api_init', __NAMESPACE__ . '\\register_graph_route' );
 }
 
 /**
@@ -161,7 +164,7 @@ function register_abilities() : void {
 		'schema-org-blocks/get-schema-graph',
 		[
 			'label'               => __( 'Get structured data graph', 'schema-org-blocks' ),
-			'description'         => __( 'Returns the schema.org JSON-LD graph for a page, to check structured data after editing. Pass the url or post_id of a published page to read what the page outputs, including the template. For a draft, or block markup passed as content, the graph is built from those blocks only and leaves out template entities such as a typed template block. With a post_id it is joined into one WebPage node for the post.', 'schema-org-blocks' ),
+			'description'         => __( 'Returns the schema.org JSON-LD graph for a page, to check structured data after editing. Pass the url or post_id of a published page to read what the page outputs, including the template. For a draft, or block markup passed as content, the graph is built from those blocks only and leaves out template entities such as a typed template block, unless with_template is set. With a post_id it is joined into one WebPage node for the post. Every result has a missing list: required properties, such as an Article\'s author or a Question\'s accepted answer, that no node sets.', 'schema-org-blocks' ),
 			'category'            => CATEGORY,
 			'execute_callback'    => __NAMESPACE__ . '\\get_schema_graph',
 			'permission_callback' => __NAMESPACE__ . '\\can_get_schema_graph',
@@ -182,6 +185,11 @@ function register_abilities() : void {
 						'type'        => 'string',
 						'description' => __( 'Block markup to build the graph from.', 'schema-org-blocks' ),
 					],
+					'with_template' => [
+						'type'        => 'boolean',
+						'default'     => false,
+						'description' => __( 'With content and post_id in a block theme, build the graph from the post\'s block template, with the content standing in for the post content, so template entities are included.', 'schema-org-blocks' ),
+					],
 				],
 				'additionalProperties' => false,
 			],
@@ -200,11 +208,86 @@ function register_abilities() : void {
 						'type'  => 'array',
 						'items' => [ 'type' => 'object' ],
 					],
+					'missing' => [
+						'type'        => 'array',
+						'description' => __( 'Required properties the graph does not set. A property that is a list means one of them is needed.', 'schema-org-blocks' ),
+						'items'       => [
+							'type'       => 'object',
+							'properties' => [
+								'type'     => [ 'type' => 'string' ],
+								'property' => [ 'type' => [ 'string', 'array' ] ],
+								'label'    => [ 'type' => 'string' ],
+							],
+						],
+					],
 				],
 			],
 			'meta'                => get_meta(),
 		]
 	);
+}
+
+/**
+ * Register the REST route the editor uses to check the graph of unsaved content.
+ *
+ * The get-schema-graph ability only accepts GET, which puts the content in the URL. This route
+ * takes the same input as a POST body.
+ */
+function register_graph_route() : void {
+	register_rest_route(
+		'schema-org-blocks/v1',
+		'/graph',
+		[
+			'methods'             => 'POST',
+			'callback'            => __NAMESPACE__ . '\\get_graph_for_request',
+			'permission_callback' => static fn ( $request ) => can_get_schema_graph( get_request_input( $request ) ),
+			'args'                => [
+				'content'       => [
+					'type'        => 'string',
+					'description' => __( 'Block markup to build the graph from.', 'schema-org-blocks' ),
+				],
+				'post_id'       => [
+					'type'        => 'integer',
+					'description' => __( 'ID of a post. With content, the post that post fields read from.', 'schema-org-blocks' ),
+				],
+				'with_template' => [
+					'type'        => 'boolean',
+					'default'     => false,
+					'description' => __( 'With content and post_id in a block theme, build the graph from the post\'s block template.', 'schema-org-blocks' ),
+				],
+			],
+		]
+	);
+}
+
+/**
+ * Get the ability input from the parameters of a request.
+ *
+ * @param \WP_REST_Request $request Request.
+ * @return array<string, mixed>
+ */
+function get_request_input( $request ) : array {
+	$input = [];
+
+	foreach ( [ 'content', 'post_id', 'with_template' ] as $key ) {
+		$value = $request->get_param( $key );
+
+		if ( null !== $value ) {
+			$input[ $key ] = $value;
+		}
+	}
+
+	return $input;
+}
+
+/**
+ * Get the schema graph for a REST request.
+ *
+ * @param \WP_REST_Request $request Request.
+ * @return array<string, mixed>|WP_Error
+ */
+function get_graph_for_request( $request ) {
+	return get_schema_graph( get_request_input( $request ) );
 }
 
 /**
@@ -368,17 +451,33 @@ function get_schema_graph( $input = null ) {
 		return $result;
 	}
 
+	$blocks   = parse_blocks( (string) $content );
+	$template = $post_id && rest_sanitize_boolean( $input['with_template'] ?? false ) ? get_post_template( (int) $post_id ) : null;
+
+	if ( $template ) {
+		BlockValues\set_post_content_blocks( (int) $post_id, $blocks );
+		$blocks = parse_blocks( (string) $template->content );
+	}
+
 	$objects = [];
-	foreach ( BlockExtensions\extract_schema( parse_blocks( (string) $content ), $context ) as $object ) {
+	foreach ( BlockExtensions\extract_schema( $blocks, $context ) as $object ) {
 		$objects[ md5( (string) wp_json_encode( $object ) ) ] = $object;
 	}
 
+	if ( $template ) {
+		$note = __( 'Built from the given blocks inside the post\'s block template, joined into one WebPage node for the post.', 'schema-org-blocks' );
+	} elseif ( $post_id ) {
+		$note = __( 'Built from the given blocks only, joined into one WebPage node for the post. Entities from the template, such as a typed template block, are not included.', 'schema-org-blocks' );
+	} else {
+		$note = __( 'Built from the given blocks only. Entities from the template, such as the site Organization or a WebPage around the post, are not included.', 'schema-org-blocks' );
+	}
+
+	$graph  = SchemaOutput\build_graph( array_values( $objects ), (int) $post_id );
 	$result = [
-		'source' => 'content',
-		'graph'  => SchemaOutput\build_graph( array_values( $objects ), (int) $post_id ),
-		'note'   => $post_id
-			? __( 'Built from the given blocks only, joined into one WebPage node for the post. Entities from the template, such as a typed template block, are not included.', 'schema-org-blocks' )
-			: __( 'Built from the given blocks only. Entities from the template, such as the site Organization or a WebPage around the post, are not included.', 'schema-org-blocks' ),
+		'source'  => 'content',
+		'graph'   => $graph,
+		'missing' => SchemaOutput\get_missing( $graph ),
+		'note'    => $note,
 	];
 
 	if ( null !== $post_id ) {
@@ -415,11 +514,55 @@ function get_page_graph( string $url ) {
 		return new WP_Error( 'schema_org_blocks_fetch_failed', sprintf( __( 'The page could not be fetched: status %d.', 'schema-org-blocks' ), $status ), [ 'status' => 502 ] );
 	}
 
+	$graph = parse_json_ld( wp_remote_retrieve_body( $response ) );
+
 	return [
-		'source' => 'page',
-		'url'    => $url,
-		'graph'  => parse_json_ld( wp_remote_retrieve_body( $response ) ),
+		'source'  => 'page',
+		'url'     => $url,
+		'graph'   => $graph,
+		'missing' => SchemaOutput\get_missing( $graph ),
 	];
+}
+
+/**
+ * Get the block template that renders a post, in a block theme.
+ *
+ * Tries `front-page` for the static front page, then the post's chosen template, else the template for its type and slug, then `singular`
+ * and `index`, and returns the first that exists.
+ *
+ * @param int $post_id Post ID.
+ * @return WP_Block_Template|null Null in a classic theme or when no template is found.
+ */
+function get_post_template( int $post_id ) : ?WP_Block_Template {
+	$post = get_post( $post_id );
+
+	if ( ! $post instanceof WP_Post || ! wp_is_block_theme() ) {
+		return null;
+	}
+
+	$custom = get_page_template_slug( $post );
+
+	if ( $custom ) {
+		$slugs = [ $custom ];
+	} elseif ( 'page' === $post->post_type ) {
+		$slugs = [ 'page-' . $post->post_name, 'page-' . $post->ID, 'page' ];
+	} else {
+		$slugs = [ 'single-' . $post->post_type . '-' . $post->post_name, 'single-' . $post->post_type, 'single' ];
+	}
+
+	if ( 'page' === $post->post_type && 'page' === get_option( 'show_on_front' ) && (int) get_option( 'page_on_front' ) === $post->ID ) {
+		array_unshift( $slugs, 'front-page' );
+	}
+
+	foreach ( array_merge( $slugs, [ 'singular', 'index' ] ) as $slug ) {
+		$template = str_ends_with( $slug, '-' ) ? null : get_block_template( get_stylesheet() . '//' . $slug );
+
+		if ( $template instanceof WP_Block_Template ) {
+			return $template;
+		}
+	}
+
+	return null;
 }
 
 /**

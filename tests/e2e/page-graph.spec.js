@@ -513,7 +513,41 @@ test.describe( 'Page node of a graph that already has one', () => {
 				isPartOf: { '@id': expect.stringMatching( /\/#website$/ ) },
 				inLanguage: expect.any( String ),
 			},
-			...graph,
+			{ ...graph[ 0 ], isPartOf: { '@id': pageId } },
+			graph[ 1 ],
+		] );
+	} );
+
+	test( 'creative works left beside the page are part of it, site entities are not', async ( {
+		requestUtils,
+	} ) => {
+		const settings = await requestUtils.rest( { path: '/wp/v2/settings' } );
+		const website = {
+			'@id': `${ settings.url.replace( /\/?$/, '/' ) }#website`,
+			'@type': 'WebSite',
+			name: 'Example',
+		};
+		const graph = [
+			{ '@type': 'Article', headline: 'Bread' },
+			{ '@type': 'Recipe', name: 'Sourdough' },
+			{
+				'@type': 'BlogPosting',
+				headline: 'Rye',
+				isPartOf: { '@id': 'https://example.com/blog/' },
+			},
+			website,
+		];
+		const result = await assemble( requestUtils, graph, true );
+		test.skip(
+			! result,
+			'The test mu-plugin is not mounted on this server.'
+		);
+
+		expect( result.slice( 1 ) ).toEqual( [
+			{ ...graph[ 0 ], isPartOf: { '@id': pageId } },
+			graph[ 1 ],
+			graph[ 2 ],
+			website,
 		] );
 	} );
 

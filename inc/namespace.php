@@ -45,6 +45,7 @@ function enqueue_block_editor_assets() : void {
 		[
 			'schemaTypes'      => SchemaTypes\get_schema_types(),
 			'schemaProperties' => SchemaTypes\get_all_properties(),
+			'schemaRequired'   => SchemaTypes\get_all_required_properties(),
 		]
 	);
 }
