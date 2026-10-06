@@ -17,6 +17,7 @@ import { __ } from '@wordpress/i18n';
 import { useMemo } from '@wordpress/element';
 
 import { toEntityId } from './EntityControls';
+import { isTypeOrSubtype } from '../utils/smart-defaults';
 
 const AttributeMappingControls = ( {
 	attributes,
@@ -65,17 +66,17 @@ const AttributeMappingControls = ( {
 			} ) );
 	}, [ attributes ] );
 
-	// Infer source: use attribute if the block has mappable attributes, content otherwise.
 	const addMapping = ( property ) => {
+		const { source, field, id } = parseSourceKey(
+			getSuggestedSource( schemaType, property )
+		);
 		onChange( {
 			...mappings,
-			[ property ]:
-				availableAttributes.length > 0
-					? {
-							source: 'attribute',
-							attributeName: availableAttributes[ 0 ].value,
-						}
-					: { source: 'content' },
+			[ property ]: {
+				source,
+				...( field ? { field } : {} ),
+				...( id ? { id } : {} ),
+			},
 		} );
 	};
 
@@ -241,6 +242,63 @@ const SOURCES = [
 		value: CUSTOM_REFERENCE,
 	},
 ];
+
+/**
+ * Source keys suggested for a property added from the panel menu.
+ */
+const SUGGESTED_SOURCES = {
+	headline: 'post:title',
+	name: 'post:title',
+	url: 'post:url',
+	datePublished: 'post:date',
+	dateModified: 'post:modified',
+	description: 'post:excerpt',
+	author: 'post:author',
+	image: 'post:image',
+	publisher: 'reference:organization',
+	inLanguage: 'site:language',
+};
+
+/**
+ * Properties that describe the post only on Article and WebPage blocks.
+ */
+const POST_ONLY_PROPERTIES = [ 'name', 'url', 'description' ];
+
+/**
+ * Site fields suggested for the site Organization and WebSite.
+ */
+const SUGGESTED_SITE_SOURCES = {
+	name: 'site:name',
+	description: 'site:description',
+	url: 'site:url',
+	logo: 'site:logo',
+	image: 'site:logo',
+};
+
+/**
+ * Get the suggested Source picker value for a property, or block text.
+ *
+ * @param {string} schemaType Schema type of the block.
+ * @param {string} property   Property name.
+ * @return {string} Source key.
+ */
+function getSuggestedSource( schemaType, property ) {
+	const isSite =
+		isTypeOrSubtype( schemaType, 'Organization' ) ||
+		isTypeOrSubtype( schemaType, 'WebSite' );
+
+	const isPost =
+		isTypeOrSubtype( schemaType, 'Article' ) ||
+		isTypeOrSubtype( schemaType, 'WebPage' );
+
+	if ( isSite && SUGGESTED_SITE_SOURCES[ property ] ) {
+		return SUGGESTED_SITE_SOURCES[ property ];
+	}
+	if ( ! isPost && POST_ONLY_PROPERTIES.includes( property ) ) {
+		return 'content';
+	}
+	return SUGGESTED_SOURCES[ property ] || 'content';
+}
 
 /**
  * Get the Source picker value for a mapping.
