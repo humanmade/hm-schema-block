@@ -235,7 +235,6 @@ function assemble_page( array $graph, string $page_id, bool $owns_page ) : array
 
 	$hub = [ '@id' => $page_id ] + $graph[ $index ];
 	unset( $graph[ $index ] );
-	$hub['@id'] = $page_id;
 
 	$absorbed = [];
 	foreach ( $graph as $key => $node ) {
