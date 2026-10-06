@@ -8,6 +8,8 @@
 namespace SchemaOrgBlocks\DynamicValues;
 
 use SchemaOrgBlocks\BlockValues;
+use WP_Block;
+use WP_HTML_Processor;
 use WP_Post;
 
 /**
@@ -76,6 +78,111 @@ function get_object( array $block, array $context ) : ?array {
 
 	$post = get_post( get_post_id( $context ) );
 	return $post instanceof WP_Post ? get_author_person( $post ) : null;
+}
+
+/**
+ * Get the trail a breadcrumbs block shows for a context, as ListItems in order.
+ *
+ * The block is rendered and its list read: each item has its visible text as `name` and its
+ * link as `item`. The last item, when it has no link, links to the page of the post in context.
+ *
+ * @param array<string, mixed> $block   Parsed core/breadcrumbs block.
+ * @param array<string, mixed> $context Block context, e.g. `postId`.
+ * @return array<int, array<string, mixed>> ListItems, or none when the block shows nothing.
+ */
+function get_breadcrumb_items( array $block, array $context ) : array {
+	static $rendering = false;
+
+	if ( $rendering || 'core/breadcrumbs' !== ( $block['blockName'] ?? '' ) ) {
+		return [];
+	}
+
+	$post_id = (int) ( $context['postId'] ?? 0 );
+
+	if ( $post_id && ! isset( $context['postType'] ) ) {
+		$context['postType'] = get_post_type( $post_id );
+	}
+
+	$rendering = true;
+
+	try {
+		$html = ( new WP_Block( $block, $context ) )->render();
+	} finally {
+		$rendering = false;
+	}
+
+	$processor = WP_HTML_Processor::create_fragment( $html );
+	$entries   = [];
+	$entry     = null;
+	$hidden    = null;
+
+	while ( $processor && $processor->next_token() ) {
+		$token = $processor->get_token_type();
+		$depth = $processor->get_current_depth();
+
+		if ( '#tag' === $token && 'LI' === $processor->get_tag() ) {
+			$entry  = null;
+			$hidden = null;
+
+			if ( ! $processor->is_tag_closer() ) {
+				$entries[] = [
+					'text' => '',
+					'url'  => null,
+				];
+				$entry     = count( $entries ) - 1;
+			}
+
+			continue;
+		}
+
+		if ( null === $entry ) {
+			continue;
+		}
+
+		if ( null !== $hidden && $depth < $hidden ) {
+			$hidden = null;
+		}
+
+		if ( '#text' === $token && null === $hidden ) {
+			$entries[ $entry ]['text'] .= $processor->get_modifiable_text();
+		}
+
+		if ( '#tag' !== $token || $processor->is_tag_closer() ) {
+			continue;
+		}
+
+		$href = 'A' === $processor->get_tag() ? $processor->get_attribute( 'href' ) : null;
+
+		if ( is_string( $href ) && '' !== $href && null === $entries[ $entry ]['url'] ) {
+			$entries[ $entry ]['url'] = $href;
+		}
+
+		if ( null === $hidden && $processor->expects_closer() && 'true' === $processor->get_attribute( 'aria-hidden' ) ) {
+			$hidden = $depth;
+		}
+	}
+
+	$items = [];
+
+	foreach ( $entries as $index => $crumb ) {
+		$name = BlockValues\normalize_whitespace( $crumb['text'] );
+		$url  = $crumb['url'] ?? ( $post_id && count( $entries ) - 1 === $index ? non_empty( get_permalink( $post_id ) ) : null );
+
+		if ( '' === $name ) {
+			continue;
+		}
+
+		$items[] = array_filter(
+			[
+				'@type'    => 'ListItem',
+				'position' => count( $items ) + 1,
+				'name'     => $name,
+				'item'     => $url,
+			]
+		);
+	}
+
+	return $items;
 }
 
 /**

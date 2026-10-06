@@ -259,6 +259,7 @@ function assemble_page( array $graph, string $page_id, bool $owns_page ) : array
 	$hub['@type'] = 1 === count( $types ) ? $types[0] : $types;
 
 	$hub = move_unaccepted_main_entities( $hub );
+	$hub = link_breadcrumb( $hub, $graph );
 
 	if ( $owns_page && ! isset( $hub['mainEntity'] ) ) {
 		[ $hub, $graph ] = link_main_entity( $hub, $graph, $page_id );
@@ -507,6 +508,38 @@ function move_unaccepted_main_entities( array $hub ) : array {
 }
 
 /**
+ * Whether a node is a BreadcrumbList.
+ *
+ * @param array<string, mixed> $node Schema object.
+ * @return bool
+ */
+function is_breadcrumb_list( array $node ) : bool {
+	return in_array( 'BreadcrumbList', get_node_types( $node ), true );
+}
+
+/**
+ * Set the page node's `breadcrumb` to the top-level BreadcrumbList whose @id is the page's `#breadcrumb`, when it has none.
+ *
+ * @param array<string, mixed>             $hub   Page node.
+ * @param array<int, array<string, mixed>> $graph Other top-level nodes.
+ * @return array<string, mixed> Page node.
+ */
+function link_breadcrumb( array $hub, array $graph ) : array {
+	if ( isset( $hub['breadcrumb'] ) ) {
+		return $hub;
+	}
+
+	foreach ( $graph as $node ) {
+		if ( is_array( $node ) && ( $node['@id'] ?? null ) === $hub['@id'] . '#breadcrumb' && is_breadcrumb_list( $node ) ) {
+			$hub['breadcrumb'] = [ '@id' => $node['@id'] ];
+			break;
+		}
+	}
+
+	return $hub;
+}
+
+/**
  * Make the only entity of the page its main entity.
  *
  * Site-wide entities (an @id under the home URL's fragment) and page nodes do not count. With
@@ -524,6 +557,7 @@ function link_main_entity( array $hub, array $graph, string $page_id ) : array {
 			static fn ( $node ) => is_array( $node )
 				&& get_node_types( $node )
 				&& ! has_page_type( $node )
+				&& ! is_breadcrumb_list( $node )
 				&& 0 !== strpos( (string) ( $node['@id'] ?? '' ), home_url( '/#' ) )
 		)
 	);
@@ -824,13 +858,24 @@ function get_node_label( array $node, string $type ) : string {
 /**
  * Add the collected schema objects to Yoast SEO's graph.
  *
- * On singular pages, page subtypes such as FAQPage are merged into Yoast's WebPage node.
+ * On singular pages, page subtypes such as FAQPage are merged into Yoast's WebPage node. Our
+ * BreadcrumbList is left out when Yoast outputs its own, or its page node has a breadcrumb.
  *
  * @param array<int, mixed> $graph Yoast schema graph nodes.
  * @return array<int, mixed>
  */
 function add_to_yoast_graph( $graph ) : array {
-	$graph   = array_merge( is_array( $graph ) ? $graph : [], build_graph( array_values( state()['objects'] ) ) );
+	$graph   = is_array( $graph ) ? $graph : [];
+	$objects = array_values( state()['objects'] );
+
+	foreach ( $graph as $node ) {
+		if ( is_array( $node ) && ( is_breadcrumb_list( $node ) || ( has_page_type( $node ) && isset( $node['breadcrumb'] ) ) ) ) {
+			$objects = array_values( array_filter( $objects, static fn ( $entity ) => ! is_breadcrumb_list( $entity ) ) );
+			break;
+		}
+	}
+
+	$graph   = array_merge( $graph, build_graph( $objects ) );
 	$page_id = is_singular() ? get_permalink( get_queried_object_id() ) : false;
 
 	return $page_id ? assemble_page( $graph, $page_id, false ) : $graph;
