@@ -604,7 +604,7 @@ function remove_nested_duplicates( array $graph ) : array {
 	return array_values(
 		array_filter(
 			$graph,
-			static fn ( $object ) => ! isset( $nested[ md5( (string) wp_json_encode( $object ) ) ] )
+			static fn ( $entity ) => ! isset( $nested[ md5( (string) wp_json_encode( $entity ) ) ] )
 		)
 	);
 }

@@ -41,7 +41,7 @@ function register_block_attribute() : void {
  * @param string               $block_name Block name.
  * @return array<string, mixed>
  */
-function add_schema_org_attribute( array $args, string $block_name ) : array {
+function add_schema_org_attribute( array $args, string $block_name ) : array { // phpcs:ignore Generic.CodeAnalysis.UnusedFunctionParameter.FoundAfterLastUsed -- Filter callback signature.
 	$args['attributes']['schemaOrg'] = [
 		'type'    => 'object',
 		'default' => [
@@ -213,10 +213,13 @@ function get_query_post_ids( array $block, array $context ) : array {
 	$page_key = isset( $context['queryId'] ) ? 'query-' . $context['queryId'] . '-page' : 'query-page';
 	$page     = max( 1, absint( wp_unslash( $_GET[ $page_key ] ?? 1 ) ) ); // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- Read-only pagination, as core/post-template does.
 	$instance = new WP_Block( $block, $context );
-	$args     = array_merge( build_query_vars_from_query_block( $instance, $page ), [
-		'fields'        => 'ids',
-		'no_found_rows' => true,
-	] );
+	$args     = array_merge(
+		build_query_vars_from_query_block( $instance, $page ),
+		[
+			'fields'        => 'ids',
+			'no_found_rows' => true,
+		]
+	);
 
 	return array_map( 'intval', ( new WP_Query( $args ) )->posts );
 }
@@ -300,17 +303,17 @@ function build_schema_object( array $block, array $context = [] ) : array {
  * publisher as a reference to the site Organization and author as the post author's Person.
  * An object with no properties of its own stays empty, so it is not output.
  *
- * @param array<string, mixed> $object  Schema object.
+ * @param array<string, mixed> $entity  Schema object.
  * @param array<string, mixed> $context Block context.
  * @return array<string, mixed>
  */
-function fill_inferred( array $object, array $context ) : array {
-	$type    = (string) ( $object['@type'] ?? '' );
+function fill_inferred( array $entity, array $context ) : array {
+	$type    = (string) ( $entity['@type'] ?? '' );
 	$post_id = DynamicValues\get_post_id( $context );
 	$post    = $post_id ? get_post( $post_id ) : null;
 
-	if ( count( $object ) < 2 || ! $post instanceof WP_Post || ( 'Article' !== $type && ! SchemaTypes\is_subtype_of( $type, 'Article' ) ) ) {
-		return $object;
+	if ( count( $entity ) < 2 || ! $post instanceof WP_Post || ( 'Article' !== $type && ! SchemaTypes\is_subtype_of( $type, 'Article' ) ) ) {
+		return $entity;
 	}
 
 	$inferred = [
@@ -323,12 +326,12 @@ function fill_inferred( array $object, array $context ) : array {
 	];
 
 	foreach ( $inferred as $property => $value ) {
-		if ( ! isset( $object[ $property ] ) && ! is_empty_value( $value ) ) {
-			$object[ $property ] = $value;
+		if ( ! isset( $entity[ $property ] ) && ! is_empty_value( $value ) ) {
+			$entity[ $property ] = $value;
 		}
 	}
 
-	return $object;
+	return $entity;
 }
 
 /**

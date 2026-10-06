@@ -14,307 +14,589 @@ namespace SchemaOrgBlocks\SchemaTypes;
  */
 function get_schema_types() : array {
 	$types = [
-		'Thing' => [
-			'label' => 'Thing',
-			'parent' => null,
+		'Thing'           => [
+			'label'      => 'Thing',
+			'parent'     => null,
 			'properties' => [
-				'name' => [ 'type' => 'Text', 'label' => 'Name' ],
-				'description' => [ 'type' => 'Text', 'label' => 'Description' ],
-				'url' => [ 'type' => 'URL', 'label' => 'URL' ],
-				'image' => [ 'type' => [ 'ImageObject', 'URL' ], 'label' => 'Image' ],
-				'identifier' => [ 'type' => 'Text', 'label' => 'Identifier' ],
-				'alternateName' => [ 'type' => 'Text', 'label' => 'Alternate Name' ],
-				'sameAs' => [ 'type' => 'URL', 'label' => 'Same As' ],
-				'mainEntityOfPage' => [ 'type' => [ 'CreativeWork', 'URL' ], 'label' => 'Main Entity Of Page' ],
+				'name'             => [
+					'type'  => 'Text',
+					'label' => 'Name',
+				],
+				'description'      => [
+					'type'  => 'Text',
+					'label' => 'Description',
+				],
+				'url'              => [
+					'type'  => 'URL',
+					'label' => 'URL',
+				],
+				'image'            => [
+					'type'  => [ 'ImageObject', 'URL' ],
+					'label' => 'Image',
+				],
+				'identifier'       => [
+					'type'  => 'Text',
+					'label' => 'Identifier',
+				],
+				'alternateName'    => [
+					'type'  => 'Text',
+					'label' => 'Alternate Name',
+				],
+				'sameAs'           => [
+					'type'  => 'URL',
+					'label' => 'Same As',
+				],
+				'mainEntityOfPage' => [
+					'type'  => [ 'CreativeWork', 'URL' ],
+					'label' => 'Main Entity Of Page',
+				],
 			],
 		],
-		'Article' => [
-			'label' => 'Article',
-			'parent' => 'CreativeWork',
-			'required' => [ 'headline', 'author', 'publisher', 'datePublished' ],
+		'Article'         => [
+			'label'      => 'Article',
+			'parent'     => 'CreativeWork',
+			'required'   => [ 'headline', 'author', 'publisher', 'datePublished' ],
 			'properties' => [
-				'headline' => [ 'type' => 'Text', 'label' => 'Headline' ],
-				'articleBody' => [ 'type' => 'Text', 'label' => 'Article Body' ],
-				'datePublished' => [ 'type' => 'DateTime', 'label' => 'Date Published' ],
-				'dateModified' => [ 'type' => 'DateTime', 'label' => 'Date Modified' ],
-				'author' => [ 'type' => [ 'Person', 'Organization' ], 'label' => 'Author' ],
-				'publisher' => [ 'type' => 'Organization', 'label' => 'Publisher' ],
+				'headline'      => [
+					'type'  => 'Text',
+					'label' => 'Headline',
+				],
+				'articleBody'   => [
+					'type'  => 'Text',
+					'label' => 'Article Body',
+				],
+				'datePublished' => [
+					'type'  => 'DateTime',
+					'label' => 'Date Published',
+				],
+				'dateModified'  => [
+					'type'  => 'DateTime',
+					'label' => 'Date Modified',
+				],
+				'author'        => [
+					'type'  => [ 'Person', 'Organization' ],
+					'label' => 'Author',
+				],
+				'publisher'     => [
+					'type'  => 'Organization',
+					'label' => 'Publisher',
+				],
 			],
 		],
-		'BlogPosting' => [
-			'label' => 'Blog Posting',
-			'parent' => 'Article',
+		'BlogPosting'     => [
+			'label'      => 'Blog Posting',
+			'parent'     => 'Article',
 			'properties' => [],
 		],
-		'NewsArticle' => [
-			'label' => 'News Article',
-			'parent' => 'Article',
+		'NewsArticle'     => [
+			'label'      => 'News Article',
+			'parent'     => 'Article',
 			'properties' => [],
 		],
-		'CreativeWork' => [
-			'label' => 'Creative Work',
-			'parent' => 'Thing',
+		'CreativeWork'    => [
+			'label'      => 'Creative Work',
+			'parent'     => 'Thing',
 			'properties' => [
-				'author' => [ 'type' => [ 'Person', 'Organization' ], 'label' => 'Author' ],
-				'datePublished' => [ 'type' => 'DateTime', 'label' => 'Date Published' ],
-				'dateModified' => [ 'type' => 'DateTime', 'label' => 'Date Modified' ],
-				'headline' => [ 'type' => 'Text', 'label' => 'Headline' ],
-				'text' => [ 'type' => 'Text', 'label' => 'Text' ],
-				'publisher' => [ 'type' => [ 'Organization', 'Person' ], 'label' => 'Publisher' ],
-				'keywords' => [ 'type' => 'Text', 'label' => 'Keywords' ],
-				'hasPart' => [ 'type' => 'CreativeWork', 'label' => 'Has Part' ],
-				'inLanguage' => [ 'type' => 'Text', 'label' => 'Language' ],
-				'isPartOf' => [ 'type' => 'CreativeWork', 'label' => 'Is Part Of' ],
+				'author'        => [
+					'type'  => [ 'Person', 'Organization' ],
+					'label' => 'Author',
+				],
+				'datePublished' => [
+					'type'  => 'DateTime',
+					'label' => 'Date Published',
+				],
+				'dateModified'  => [
+					'type'  => 'DateTime',
+					'label' => 'Date Modified',
+				],
+				'headline'      => [
+					'type'  => 'Text',
+					'label' => 'Headline',
+				],
+				'text'          => [
+					'type'  => 'Text',
+					'label' => 'Text',
+				],
+				'publisher'     => [
+					'type'  => [ 'Organization', 'Person' ],
+					'label' => 'Publisher',
+				],
+				'keywords'      => [
+					'type'  => 'Text',
+					'label' => 'Keywords',
+				],
+				'hasPart'       => [
+					'type'  => 'CreativeWork',
+					'label' => 'Has Part',
+				],
+				'inLanguage'    => [
+					'type'  => 'Text',
+					'label' => 'Language',
+				],
+				'isPartOf'      => [
+					'type'  => 'CreativeWork',
+					'label' => 'Is Part Of',
+				],
 			],
 		],
-		'WebPage' => [
-			'label' => 'Web Page',
-			'parent' => 'CreativeWork',
+		'WebPage'         => [
+			'label'      => 'Web Page',
+			'parent'     => 'CreativeWork',
 			'properties' => [
-				'mainEntity' => [ 'type' => 'Thing', 'label' => 'Main Entity' ],
+				'mainEntity' => [
+					'type'  => 'Thing',
+					'label' => 'Main Entity',
+				],
 			],
 		],
-		'FAQPage' => [
-			'label' => 'FAQ Page',
-			'parent' => 'WebPage',
-			'required' => [ 'mainEntity' ],
+		'FAQPage'         => [
+			'label'      => 'FAQ Page',
+			'parent'     => 'WebPage',
+			'required'   => [ 'mainEntity' ],
 			'properties' => [
-				'mainEntity' => [ 'type' => 'Question', 'label' => 'Questions' ],
+				'mainEntity' => [
+					'type'  => 'Question',
+					'label' => 'Questions',
+				],
 			],
 		],
-		'Comment' => [
-			'label' => 'Comment',
-			'parent' => 'CreativeWork',
+		'Comment'         => [
+			'label'      => 'Comment',
+			'parent'     => 'CreativeWork',
 			'properties' => [],
 		],
-		'Question' => [
-			'label' => 'Question',
-			'parent' => 'Comment',
-			'required' => [ 'name', 'acceptedAnswer' ],
+		'Question'        => [
+			'label'      => 'Question',
+			'parent'     => 'Comment',
+			'required'   => [ 'name', 'acceptedAnswer' ],
 			'properties' => [
-				'acceptedAnswer' => [ 'type' => [ 'Answer', 'ItemList' ], 'label' => 'Accepted Answer' ],
-				'suggestedAnswer' => [ 'type' => [ 'Answer', 'ItemList' ], 'label' => 'Suggested Answer' ],
+				'acceptedAnswer'  => [
+					'type'  => [ 'Answer', 'ItemList' ],
+					'label' => 'Accepted Answer',
+				],
+				'suggestedAnswer' => [
+					'type'  => [ 'Answer', 'ItemList' ],
+					'label' => 'Suggested Answer',
+				],
 			],
 		],
-		'Answer' => [
-			'label' => 'Answer',
-			'parent' => 'Comment',
-			'required' => [ 'text' ],
+		'Answer'          => [
+			'label'      => 'Answer',
+			'parent'     => 'Comment',
+			'required'   => [ 'text' ],
 			'properties' => [],
 		],
-		'HowTo' => [
-			'label' => 'How-to',
-			'parent' => 'CreativeWork',
-			'required' => [ 'name', 'step' ],
+		'HowTo'           => [
+			'label'      => 'How-to',
+			'parent'     => 'CreativeWork',
+			'required'   => [ 'name', 'step' ],
 			'properties' => [
-				'step' => [ 'type' => [ 'HowToStep', 'HowToSection', 'Text' ], 'label' => 'Steps' ],
-				'totalTime' => [ 'type' => 'Duration', 'label' => 'Total Time' ],
-				'supply' => [ 'type' => [ 'HowToSupply', 'Text' ], 'label' => 'Supply' ],
-				'tool' => [ 'type' => [ 'HowToTool', 'Text' ], 'label' => 'Tool' ],
-				'yield' => [ 'type' => 'Text', 'label' => 'Yield' ],
+				'step'      => [
+					'type'  => [ 'HowToStep', 'HowToSection', 'Text' ],
+					'label' => 'Steps',
+				],
+				'totalTime' => [
+					'type'  => 'Duration',
+					'label' => 'Total Time',
+				],
+				'supply'    => [
+					'type'  => [ 'HowToSupply', 'Text' ],
+					'label' => 'Supply',
+				],
+				'tool'      => [
+					'type'  => [ 'HowToTool', 'Text' ],
+					'label' => 'Tool',
+				],
+				'yield'     => [
+					'type'  => 'Text',
+					'label' => 'Yield',
+				],
 			],
 		],
-		'HowToStep' => [
-			'label' => 'How-to Step',
-			'parent' => 'CreativeWork',
-			'required' => [ 'text' ],
+		'HowToStep'       => [
+			'label'      => 'How-to Step',
+			'parent'     => 'CreativeWork',
+			'required'   => [ 'text' ],
 			'properties' => [],
 		],
-		'WebSite' => [
-			'label' => 'Web Site',
-			'parent' => 'CreativeWork',
-			'required' => [ 'name', 'url' ],
+		'WebSite'         => [
+			'label'      => 'Web Site',
+			'parent'     => 'CreativeWork',
+			'required'   => [ 'name', 'url' ],
 			'properties' => [],
 		],
-		'Blog' => [
-			'label' => 'Blog',
-			'parent' => 'CreativeWork',
+		'Blog'            => [
+			'label'      => 'Blog',
+			'parent'     => 'CreativeWork',
 			'properties' => [
-				'blogPost' => [ 'type' => 'BlogPosting', 'label' => 'Blog Posts' ],
+				'blogPost' => [
+					'type'  => 'BlogPosting',
+					'label' => 'Blog Posts',
+				],
 			],
 		],
-		'ItemList' => [
-			'label' => 'Item List',
-			'parent' => 'Thing',
-			'required' => [ 'itemListElement' ],
+		'ItemList'        => [
+			'label'      => 'Item List',
+			'parent'     => 'Thing',
+			'required'   => [ 'itemListElement' ],
 			'properties' => [
-				'itemListElement' => [ 'type' => [ 'ListItem', 'Thing', 'Text' ], 'label' => 'Items' ],
-				'numberOfItems' => [ 'type' => 'Integer', 'label' => 'Number of Items' ],
+				'itemListElement' => [
+					'type'  => [ 'ListItem', 'Thing', 'Text' ],
+					'label' => 'Items',
+				],
+				'numberOfItems'   => [
+					'type'  => 'Integer',
+					'label' => 'Number of Items',
+				],
 			],
 		],
-		'ListItem' => [
-			'label' => 'List Item',
-			'parent' => 'Thing',
+		'ListItem'        => [
+			'label'      => 'List Item',
+			'parent'     => 'Thing',
 			'properties' => [
-				'position' => [ 'type' => 'Integer', 'label' => 'Position' ],
-				'item' => [ 'type' => 'Thing', 'label' => 'Item' ],
+				'position' => [
+					'type'  => 'Integer',
+					'label' => 'Position',
+				],
+				'item'     => [
+					'type'  => 'Thing',
+					'label' => 'Item',
+				],
 			],
 		],
-		'Organization' => [
-			'label' => 'Organization',
-			'parent' => 'Thing',
-			'required' => [ 'name' ],
+		'Organization'    => [
+			'label'      => 'Organization',
+			'parent'     => 'Thing',
+			'required'   => [ 'name' ],
 			'properties' => [
-				'logo' => [ 'type' => [ 'ImageObject', 'URL' ], 'label' => 'Logo' ],
-				'address' => [ 'type' => 'PostalAddress', 'label' => 'Address' ],
-				'contactPoint' => [ 'type' => 'ContactPoint', 'label' => 'Contact Point' ],
-				'email' => [ 'type' => 'Text', 'label' => 'Email' ],
-				'telephone' => [ 'type' => 'Text', 'label' => 'Telephone' ],
-				'foundingDate' => [ 'type' => 'Date', 'label' => 'Founding Date' ],
+				'logo'         => [
+					'type'  => [ 'ImageObject', 'URL' ],
+					'label' => 'Logo',
+				],
+				'address'      => [
+					'type'  => 'PostalAddress',
+					'label' => 'Address',
+				],
+				'contactPoint' => [
+					'type'  => 'ContactPoint',
+					'label' => 'Contact Point',
+				],
+				'email'        => [
+					'type'  => 'Text',
+					'label' => 'Email',
+				],
+				'telephone'    => [
+					'type'  => 'Text',
+					'label' => 'Telephone',
+				],
+				'foundingDate' => [
+					'type'  => 'Date',
+					'label' => 'Founding Date',
+				],
 			],
 		],
-		'LocalBusiness' => [
-			'label' => 'Local Business',
-			'parent' => 'Organization',
-			'required' => [ 'name', 'address' ],
+		'LocalBusiness'   => [
+			'label'      => 'Local Business',
+			'parent'     => 'Organization',
+			'required'   => [ 'name', 'address' ],
 			'properties' => [
-				'priceRange' => [ 'type' => 'Text', 'label' => 'Price Range' ],
-				'openingHours' => [ 'type' => 'Text', 'label' => 'Opening Hours' ],
+				'priceRange'   => [
+					'type'  => 'Text',
+					'label' => 'Price Range',
+				],
+				'openingHours' => [
+					'type'  => 'Text',
+					'label' => 'Opening Hours',
+				],
 			],
 		],
-		'Person' => [
-			'label' => 'Person',
-			'parent' => 'Thing',
-			'required' => [ 'name' ],
+		'Person'          => [
+			'label'      => 'Person',
+			'parent'     => 'Thing',
+			'required'   => [ 'name' ],
 			'properties' => [
-				'givenName' => [ 'type' => 'Text', 'label' => 'Given Name' ],
-				'familyName' => [ 'type' => 'Text', 'label' => 'Family Name' ],
-				'email' => [ 'type' => 'Text', 'label' => 'Email' ],
-				'telephone' => [ 'type' => 'Text', 'label' => 'Telephone' ],
-				'jobTitle' => [ 'type' => 'Text', 'label' => 'Job Title' ],
-				'worksFor' => [ 'type' => 'Organization', 'label' => 'Works For' ],
+				'givenName'  => [
+					'type'  => 'Text',
+					'label' => 'Given Name',
+				],
+				'familyName' => [
+					'type'  => 'Text',
+					'label' => 'Family Name',
+				],
+				'email'      => [
+					'type'  => 'Text',
+					'label' => 'Email',
+				],
+				'telephone'  => [
+					'type'  => 'Text',
+					'label' => 'Telephone',
+				],
+				'jobTitle'   => [
+					'type'  => 'Text',
+					'label' => 'Job Title',
+				],
+				'worksFor'   => [
+					'type'  => 'Organization',
+					'label' => 'Works For',
+				],
 			],
 		],
-		'Place' => [
-			'label' => 'Place',
-			'parent' => 'Thing',
+		'Place'           => [
+			'label'      => 'Place',
+			'parent'     => 'Thing',
 			'properties' => [
-				'address' => [ 'type' => 'PostalAddress', 'label' => 'Address' ],
-				'geo' => [ 'type' => 'GeoCoordinates', 'label' => 'Geo Coordinates' ],
-				'telephone' => [ 'type' => 'Text', 'label' => 'Telephone' ],
-				'openingHoursSpecification' => [ 'type' => 'OpeningHoursSpecification', 'label' => 'Opening Hours' ],
+				'address'                   => [
+					'type'  => 'PostalAddress',
+					'label' => 'Address',
+				],
+				'geo'                       => [
+					'type'  => 'GeoCoordinates',
+					'label' => 'Geo Coordinates',
+				],
+				'telephone'                 => [
+					'type'  => 'Text',
+					'label' => 'Telephone',
+				],
+				'openingHoursSpecification' => [
+					'type'  => 'OpeningHoursSpecification',
+					'label' => 'Opening Hours',
+				],
 			],
 		],
-		'Accommodation' => [
-			'label' => 'Accommodation',
-			'parent' => 'Place',
+		'Accommodation'   => [
+			'label'      => 'Accommodation',
+			'parent'     => 'Place',
 			'properties' => [
-				'numberOfRooms' => [ 'type' => 'Number', 'label' => 'Number of Rooms' ],
-				'amenityFeature' => [ 'type' => 'LocationFeatureSpecification', 'label' => 'Amenity Feature' ],
+				'numberOfRooms'  => [
+					'type'  => 'Number',
+					'label' => 'Number of Rooms',
+				],
+				'amenityFeature' => [
+					'type'  => 'LocationFeatureSpecification',
+					'label' => 'Amenity Feature',
+				],
 			],
 		],
-		'Room' => [
-			'label' => 'Room',
-			'parent' => 'Accommodation',
+		'Room'            => [
+			'label'      => 'Room',
+			'parent'     => 'Accommodation',
 			'properties' => [],
 		],
-		'Product' => [
-			'label' => 'Product',
-			'parent' => 'Thing',
-			'required' => [ 'name', [ 'offers', 'review', 'aggregateRating' ] ],
+		'Product'         => [
+			'label'      => 'Product',
+			'parent'     => 'Thing',
+			'required'   => [ 'name', [ 'offers', 'review', 'aggregateRating' ] ],
 			'properties' => [
-				'brand' => [ 'type' => [ 'Brand', 'Organization' ], 'label' => 'Brand' ],
-				'offers' => [ 'type' => 'Offer', 'label' => 'Offers' ],
-				'aggregateRating' => [ 'type' => 'AggregateRating', 'label' => 'Aggregate Rating' ],
-				'review' => [ 'type' => 'Review', 'label' => 'Review' ],
-				'sku' => [ 'type' => 'Text', 'label' => 'SKU' ],
+				'brand'           => [
+					'type'  => [ 'Brand', 'Organization' ],
+					'label' => 'Brand',
+				],
+				'offers'          => [
+					'type'  => 'Offer',
+					'label' => 'Offers',
+				],
+				'aggregateRating' => [
+					'type'  => 'AggregateRating',
+					'label' => 'Aggregate Rating',
+				],
+				'review'          => [
+					'type'  => 'Review',
+					'label' => 'Review',
+				],
+				'sku'             => [
+					'type'  => 'Text',
+					'label' => 'SKU',
+				],
 			],
 		],
-		'Event' => [
-			'label' => 'Event',
-			'parent' => 'Thing',
-			'required' => [ 'name', 'startDate', 'location' ],
+		'Event'           => [
+			'label'      => 'Event',
+			'parent'     => 'Thing',
+			'required'   => [ 'name', 'startDate', 'location' ],
 			'properties' => [
-				'startDate' => [ 'type' => 'DateTime', 'label' => 'Start Date' ],
-				'endDate' => [ 'type' => 'DateTime', 'label' => 'End Date' ],
-				'location' => [ 'type' => [ 'Place', 'VirtualLocation' ], 'label' => 'Location' ],
-				'organizer' => [ 'type' => [ 'Person', 'Organization' ], 'label' => 'Organizer' ],
-				'performer' => [ 'type' => [ 'Person', 'Organization' ], 'label' => 'Performer' ],
+				'startDate' => [
+					'type'  => 'DateTime',
+					'label' => 'Start Date',
+				],
+				'endDate'   => [
+					'type'  => 'DateTime',
+					'label' => 'End Date',
+				],
+				'location'  => [
+					'type'  => [ 'Place', 'VirtualLocation' ],
+					'label' => 'Location',
+				],
+				'organizer' => [
+					'type'  => [ 'Person', 'Organization' ],
+					'label' => 'Organizer',
+				],
+				'performer' => [
+					'type'  => [ 'Person', 'Organization' ],
+					'label' => 'Performer',
+				],
 			],
 		],
-		'ImageObject' => [
-			'label' => 'Image Object',
-			'parent' => 'MediaObject',
-			'required' => [ [ 'contentUrl', 'url' ] ],
+		'ImageObject'     => [
+			'label'      => 'Image Object',
+			'parent'     => 'MediaObject',
+			'required'   => [ [ 'contentUrl', 'url' ] ],
 			'properties' => [
-				'contentUrl' => [ 'type' => 'URL', 'label' => 'Content URL' ],
-				'width' => [ 'type' => 'Number', 'label' => 'Width' ],
-				'height' => [ 'type' => 'Number', 'label' => 'Height' ],
-				'caption' => [ 'type' => 'Text', 'label' => 'Caption' ],
+				'contentUrl' => [
+					'type'  => 'URL',
+					'label' => 'Content URL',
+				],
+				'width'      => [
+					'type'  => 'Number',
+					'label' => 'Width',
+				],
+				'height'     => [
+					'type'  => 'Number',
+					'label' => 'Height',
+				],
+				'caption'    => [
+					'type'  => 'Text',
+					'label' => 'Caption',
+				],
 			],
 		],
-		'MediaObject' => [
-			'label' => 'Media Object',
-			'parent' => 'CreativeWork',
+		'MediaObject'     => [
+			'label'      => 'Media Object',
+			'parent'     => 'CreativeWork',
 			'properties' => [
-				'contentUrl' => [ 'type' => 'URL', 'label' => 'Content URL' ],
-				'encodingFormat' => [ 'type' => 'Text', 'label' => 'Encoding Format' ],
+				'contentUrl'     => [
+					'type'  => 'URL',
+					'label' => 'Content URL',
+				],
+				'encodingFormat' => [
+					'type'  => 'Text',
+					'label' => 'Encoding Format',
+				],
 			],
 		],
-		'PostalAddress' => [
-			'label' => 'Postal Address',
-			'parent' => 'ContactPoint',
+		'PostalAddress'   => [
+			'label'      => 'Postal Address',
+			'parent'     => 'ContactPoint',
 			'properties' => [
-				'streetAddress' => [ 'type' => 'Text', 'label' => 'Street Address' ],
-				'addressLocality' => [ 'type' => 'Text', 'label' => 'City' ],
-				'addressRegion' => [ 'type' => 'Text', 'label' => 'Region' ],
-				'postalCode' => [ 'type' => 'Text', 'label' => 'Postal Code' ],
-				'addressCountry' => [ 'type' => 'Text', 'label' => 'Country' ],
+				'streetAddress'   => [
+					'type'  => 'Text',
+					'label' => 'Street Address',
+				],
+				'addressLocality' => [
+					'type'  => 'Text',
+					'label' => 'City',
+				],
+				'addressRegion'   => [
+					'type'  => 'Text',
+					'label' => 'Region',
+				],
+				'postalCode'      => [
+					'type'  => 'Text',
+					'label' => 'Postal Code',
+				],
+				'addressCountry'  => [
+					'type'  => 'Text',
+					'label' => 'Country',
+				],
 			],
 		],
-		'ContactPoint' => [
-			'label' => 'Contact Point',
-			'parent' => 'Thing',
+		'ContactPoint'    => [
+			'label'      => 'Contact Point',
+			'parent'     => 'Thing',
 			'properties' => [
-				'telephone' => [ 'type' => 'Text', 'label' => 'Telephone' ],
-				'email' => [ 'type' => 'Text', 'label' => 'Email' ],
-				'contactType' => [ 'type' => 'Text', 'label' => 'Contact Type' ],
+				'telephone'   => [
+					'type'  => 'Text',
+					'label' => 'Telephone',
+				],
+				'email'       => [
+					'type'  => 'Text',
+					'label' => 'Email',
+				],
+				'contactType' => [
+					'type'  => 'Text',
+					'label' => 'Contact Type',
+				],
 			],
 		],
-		'GeoCoordinates' => [
-			'label' => 'Geo Coordinates',
-			'parent' => 'Thing',
+		'GeoCoordinates'  => [
+			'label'      => 'Geo Coordinates',
+			'parent'     => 'Thing',
 			'properties' => [
-				'latitude' => [ 'type' => 'Number', 'label' => 'Latitude' ],
-				'longitude' => [ 'type' => 'Number', 'label' => 'Longitude' ],
+				'latitude'  => [
+					'type'  => 'Number',
+					'label' => 'Latitude',
+				],
+				'longitude' => [
+					'type'  => 'Number',
+					'label' => 'Longitude',
+				],
 			],
 		],
-		'Offer' => [
-			'label' => 'Offer',
-			'parent' => 'Thing',
-			'required' => [ 'price', 'priceCurrency' ],
+		'Offer'           => [
+			'label'      => 'Offer',
+			'parent'     => 'Thing',
+			'required'   => [ 'price', 'priceCurrency' ],
 			'properties' => [
-				'price' => [ 'type' => 'Number', 'label' => 'Price' ],
-				'priceCurrency' => [ 'type' => 'Text', 'label' => 'Price Currency' ],
-				'availability' => [ 'type' => 'Text', 'label' => 'Availability' ],
-				'url' => [ 'type' => 'URL', 'label' => 'URL' ],
+				'price'         => [
+					'type'  => 'Number',
+					'label' => 'Price',
+				],
+				'priceCurrency' => [
+					'type'  => 'Text',
+					'label' => 'Price Currency',
+				],
+				'availability'  => [
+					'type'  => 'Text',
+					'label' => 'Availability',
+				],
+				'url'           => [
+					'type'  => 'URL',
+					'label' => 'URL',
+				],
 			],
 		],
-		'Review' => [
-			'label' => 'Review',
-			'parent' => 'CreativeWork',
-			'required' => [ 'author', 'reviewRating' ],
+		'Review'          => [
+			'label'      => 'Review',
+			'parent'     => 'CreativeWork',
+			'required'   => [ 'author', 'reviewRating' ],
 			'properties' => [
-				'reviewRating' => [ 'type' => 'Rating', 'label' => 'Review Rating' ],
-				'author' => [ 'type' => [ 'Person', 'Organization' ], 'label' => 'Author' ],
+				'reviewRating' => [
+					'type'  => 'Rating',
+					'label' => 'Review Rating',
+				],
+				'author'       => [
+					'type'  => [ 'Person', 'Organization' ],
+					'label' => 'Author',
+				],
 			],
 		],
-		'Rating' => [
-			'label' => 'Rating',
-			'parent' => 'Thing',
-			'required' => [ 'ratingValue' ],
+		'Rating'          => [
+			'label'      => 'Rating',
+			'parent'     => 'Thing',
+			'required'   => [ 'ratingValue' ],
 			'properties' => [
-				'ratingValue' => [ 'type' => 'Number', 'label' => 'Rating Value' ],
-				'bestRating' => [ 'type' => 'Number', 'label' => 'Best Rating' ],
-				'worstRating' => [ 'type' => 'Number', 'label' => 'Worst Rating' ],
+				'ratingValue' => [
+					'type'  => 'Number',
+					'label' => 'Rating Value',
+				],
+				'bestRating'  => [
+					'type'  => 'Number',
+					'label' => 'Best Rating',
+				],
+				'worstRating' => [
+					'type'  => 'Number',
+					'label' => 'Worst Rating',
+				],
 			],
 		],
 		'AggregateRating' => [
-			'label' => 'Aggregate Rating',
-			'parent' => 'Rating',
-			'required' => [ 'ratingValue', [ 'ratingCount', 'reviewCount' ] ],
+			'label'      => 'Aggregate Rating',
+			'parent'     => 'Rating',
+			'required'   => [ 'ratingValue', [ 'ratingCount', 'reviewCount' ] ],
 			'properties' => [
-				'reviewCount' => [ 'type' => 'Number', 'label' => 'Review Count' ],
+				'reviewCount' => [
+					'type'  => 'Number',
+					'label' => 'Review Count',
+				],
 			],
 		],
 	];
@@ -341,8 +623,8 @@ function get_type_properties( string $type ) : array {
 	$parent = $all_types[ $type ]['parent'] ?? null;
 	while ( $parent && isset( $all_types[ $parent ] ) ) {
 		$parent_properties = $all_types[ $parent ]['properties'] ?? [];
-		$properties = array_merge( $parent_properties, $properties );
-		$parent = $all_types[ $parent ]['parent'] ?? null;
+		$properties        = array_merge( $parent_properties, $properties );
+		$parent            = $all_types[ $parent ]['parent'] ?? null;
 	}
 
 	return $properties;
@@ -351,7 +633,7 @@ function get_type_properties( string $type ) : array {
 /**
  * Get the properties a type needs for rich results, including those of its parent types.
  *
- * schema.org has no required properties. These follow Google's rich result requirements, plus
+ * Schema.org has no required properties. These follow Google's rich result requirements, plus
  * author and publisher for articles. An entry that is an array means any one of those
  * properties will do.
  *
@@ -403,7 +685,7 @@ function get_all_required_properties() : array {
  */
 function get_child_types( string $parent_type ) : array {
 	$all_types = get_schema_types();
-	$children = [];
+	$children  = [];
 
 	foreach ( $all_types as $type_name => $type_data ) {
 		if ( ( $type_data['parent'] ?? null ) === $parent_type ) {
@@ -446,7 +728,7 @@ function is_subtype_of( string $type, string $parent_type ) : bool {
  * @return array<string, array<string, array<string, mixed>>>
  */
 function get_all_properties() : array {
-	$all_types = get_schema_types();
+	$all_types  = get_schema_types();
 	$properties = [];
 
 	foreach ( $all_types as $type_name => $type_data ) {

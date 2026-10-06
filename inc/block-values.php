@@ -37,7 +37,7 @@ function get_attribute( array $block, string $name ) {
 			return null;
 		}
 
-		$value = isset( $definition['source'] ) ? get_sourced_value( $block['innerHTML'] ?? '', $definition ) : null;
+		$value   = isset( $definition['source'] ) ? get_sourced_value( $block['innerHTML'] ?? '', $definition ) : null;
 		$value ??= $definition['default'] ?? null;
 	}
 
@@ -110,8 +110,8 @@ function get_sourced_value( string $html, array $definition ) : ?string {
  */
 function matches_selector( WP_HTML_Processor $processor, string $selector ) : bool {
 	foreach ( explode( ',', $selector ) as $item ) {
-		$parts    = preg_split( '/\s*([\s>+~])\s*/', trim( $item ), -1, PREG_SPLIT_DELIM_CAPTURE );
-		$compound = (string) array_pop( $parts );
+		$parts      = preg_split( '/\s*([\s>+~])\s*/', trim( $item ), -1, PREG_SPLIT_DELIM_CAPTURE );
+		$compound   = (string) array_pop( $parts );
 		$combinator = (string) array_pop( $parts );
 		$parent     = (string) array_pop( $parts );
 

@@ -14,15 +14,16 @@
 	<rule ref="WordPress-Core">
 		<exclude name="WordPress.Files.FileName.InvalidClassFileName" />
 		<exclude name="WordPress.Files.FileName.NotHyphenatedLowercase" />
+		<!-- Allow short array syntax and a space before the return type colon -->
+		<exclude name="Universal.Arrays.DisallowShortArraySyntax" />
+		<exclude name="PSR12.Functions.ReturnTypeDeclaration.SpaceBeforeColon" />
 	</rule>
 
 	<rule ref="WordPress-Docs" />
 	<rule ref="WordPress-Extra" />
 
-	<!-- Allow short array syntax -->
-	<rule ref="Generic.Arrays.DisallowShortArraySyntax.Found">
-		<severity>0</severity>
-	</rule>
+	<!-- Check PHP compatibility with the minimum supported version -->
+	<rule ref="PHPCompatibilityWP"/>
 
 	<!-- Minimum PHP version -->
 	<config name="minimum_supported_wp_version" value="6.0"/>
