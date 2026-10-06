@@ -295,19 +295,21 @@ function build_schema_object( array $block, array $context = [] ) : array {
 /**
  * Fill the properties an article needs from the post in context, where nothing set them.
  *
- * Applies to Article and its subtypes when the context has a post: headline from the title,
- * datePublished, dateModified, image from the featured image, publisher as a reference to the
- * site Organization and author as the post author's Person.
+ * Applies to Article and its subtypes when there is a post, from the context or else the current
+ * post: headline from the title, datePublished, dateModified, image from the featured image,
+ * publisher as a reference to the site Organization and author as the post author's Person.
+ * An object with no properties of its own stays empty, so it is not output.
  *
  * @param array<string, mixed> $object  Schema object.
  * @param array<string, mixed> $context Block context.
  * @return array<string, mixed>
  */
 function fill_inferred( array $object, array $context ) : array {
-	$type = (string) ( $object['@type'] ?? '' );
-	$post = isset( $context['postId'] ) ? get_post( (int) $context['postId'] ) : null;
+	$type    = (string) ( $object['@type'] ?? '' );
+	$post_id = DynamicValues\get_post_id( $context );
+	$post    = $post_id ? get_post( $post_id ) : null;
 
-	if ( ! $post instanceof WP_Post || ( 'Article' !== $type && ! SchemaTypes\is_subtype_of( $type, 'Article' ) ) ) {
+	if ( count( $object ) < 2 || ! $post instanceof WP_Post || ( 'Article' !== $type && ! SchemaTypes\is_subtype_of( $type, 'Article' ) ) ) {
 		return $object;
 	}
 
