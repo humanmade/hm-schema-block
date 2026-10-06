@@ -254,10 +254,12 @@ function get_schema_types() : array {
 				],
 			],
 		],
+		// `offerAsSubtype` false: the editor offers the type only to properties that name it, not to those that accept its parent.
 		'BreadcrumbList'  => [
-			'label'      => 'Breadcrumb List',
-			'parent'     => 'ItemList',
-			'properties' => [],
+			'label'          => 'Breadcrumb List',
+			'parent'         => 'ItemList',
+			'offerAsSubtype' => false,
+			'properties'     => [],
 		],
 		'ListItem'        => [
 			'label'      => 'List Item',
