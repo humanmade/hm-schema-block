@@ -41,17 +41,33 @@ function register_block_attribute() : void {
  * @param string               $block_name Block name.
  * @return array<string, mixed>
  */
-function add_schema_org_attribute( array $args, string $block_name ) : array { // phpcs:ignore Generic.CodeAnalysis.UnusedFunctionParameter.FoundAfterLastUsed -- Filter callback signature.
+function add_schema_org_attribute( array $args, string $block_name ) : array {
 	$args['attributes']['schemaOrg'] = [
 		'type'    => 'object',
-		'default' => [
-			'type'         => null,
-			'mappings'     => [],
-			'isProperty'   => false,
-			'propertyName' => null,
-		],
+		'default' => get_default_config( $block_name ),
 	];
 	return $args;
+}
+
+/**
+ * Get the schemaOrg configuration a block has when none is saved.
+ *
+ * Most blocks have no type. The breadcrumbs block is a BreadcrumbList.
+ *
+ * @param string $block_name Block name.
+ * @return array{type: ?string, mappings: array<string, mixed>, isProperty: bool, propertyName: ?string}
+ */
+function get_default_config( string $block_name ) : array {
+	$types = [
+		'core/breadcrumbs' => 'BreadcrumbList',
+	];
+
+	return [
+		'type'         => $types[ $block_name ] ?? null,
+		'mappings'     => [],
+		'isProperty'   => false,
+		'propertyName' => null,
+	];
 }
 
 /**
@@ -65,7 +81,7 @@ function add_schema_org_attribute( array $args, string $block_name ) : array { /
  * @return array{type: ?string, mappings: array<string, mixed>, isProperty: bool, propertyName: ?string, id: ?string, contains: ?string}
  */
 function get_config( array $block ) : array {
-	$config = $block['attrs']['schemaOrg'] ?? [];
+	$config = $block['attrs']['schemaOrg'] ?? get_default_config( (string) ( $block['blockName'] ?? '' ) );
 	$config = is_array( $config ) ? $config : [];
 	$id     = sanitize_key( (string) ( $config['id'] ?? '' ) );
 

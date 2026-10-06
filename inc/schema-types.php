@@ -147,6 +147,10 @@ function get_schema_types() : array {
 					'type'  => 'Thing',
 					'label' => 'Main Entity',
 				],
+				'breadcrumb' => [
+					'type'  => 'BreadcrumbList',
+					'label' => 'Breadcrumb',
+				],
 			],
 		],
 		'FAQPage'         => [
@@ -249,6 +253,11 @@ function get_schema_types() : array {
 					'label' => 'Number of Items',
 				],
 			],
+		],
+		'BreadcrumbList'  => [
+			'label'      => 'Breadcrumb List',
+			'parent'     => 'ItemList',
+			'properties' => [],
 		],
 		'ListItem'        => [
 			'label'      => 'List Item',
