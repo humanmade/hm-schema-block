@@ -37,6 +37,8 @@ The `schema-org-blocks/get-schema-types` ability lists the supported types and t
 7. References to `#website` or `#organization` that no block defines are filled from the site settings (not with Yoast active, which outputs them itself).
 8. An entity nested more than once (e.g. one author on every post of a list) is output once with an `@id` and referenced elsewhere. Authors get Yoast's Person `@id`. Nothing is copied from outer entities to inner ones; link shared things with a `reference` mapping and map `inLanguage` from the `site` `language` field where wanted.
 9. Hidden blocks, password-protected content, excerpts, and other posts' full content inside query loops are left out.
+10. Required properties are filled where nothing sets them. An `Article` (or subtype) with a post in context gets `headline`, `datePublished`, `dateModified` and `image` from the post, `publisher` as a reference to `#organization` (which is added from the site settings when no block defines it) and `author` as the post author's Person. A typed post template fills each post's own values. Other creative works left at the top level of a page are marked `isPartOf` the page.
+11. Types have required properties, following Google's rich result requirements plus author and publisher for articles; schema.org itself has none. For example `Question` needs `name` and `acceptedAnswer`, `Offer` needs `price` and `priceCurrency`, and `Product` needs `name` and one of `offers`, `review` or `aggregateRating`. `get-schema-types` is not changed by this, but the editor's publish panel and the `missing` field below report what is not set.
 
 ## Recipes
 
@@ -65,14 +67,14 @@ To make the single template describe the whole page, type its main group with th
 
 ## Checking the result
 
-1. Run the `schema-org-blocks/get-schema-graph` ability. With the `url` or `post_id` of a published page, it returns the JSON-LD that page outputs, including Yoast SEO's graph. With a draft's `post_id`, or block markup as `content`, it builds the graph from those blocks only, so entities from the template, such as the site Organization, are missing.
+1. Run the `schema-org-blocks/get-schema-graph` ability. With the `url` or `post_id` of a published page, it returns the JSON-LD that page outputs, including Yoast SEO's graph. With a draft's `post_id`, or block markup as `content`, it builds the graph from those blocks only, so entities from the template, such as the site Organization, are missing. Add `with_template: true` to `content` and `post_id` in a block theme to build from the post's block template instead, with `content` standing in for the post's content. This is what the editor's pre-publish check does.
 
    Without the abilities, load the page and read the JSON-LD:
    ```bash
    curl -s https://example.com/sample-post/ | python3 -c "import sys,re,json; [print(json.dumps(json.loads(m),indent=1)) for m in re.findall(r'<script type=\"application/ld\+json\"[^>]*>(.*?)</script>', sys.stdin.read(), re.S)]"
    ```
    With Yoast SEO active, the nodes are in Yoast's `yoast-schema-graph` script instead. The command above reads that script too.
-2. Check that each entity has its key properties: `headline` and `datePublished` for articles, `name` and `acceptedAnswer` for questions, `url` for list items, and that every `@id` reference has a matching node.
+2. Read the `missing` list of the result. Each entry has the `type`, a `label` for the node and the required `property` that nothing sets; a list of properties means one of them is needed. An empty list means every required property is set. Fix the blocks and run the ability again. Also check that every `@id` reference has a matching node.
 3. Validate with the Schema Markup Validator (validator.schema.org) or Google's Rich Results Test.
 
 Google shows FAQ rich results only for some sites and no longer shows how-to rich results. The markup is still valid and other search and answer engines read it.
