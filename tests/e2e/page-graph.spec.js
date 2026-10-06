@@ -76,6 +76,52 @@ const getJsonLdAt = async ( page, url ) => {
 
 const graphOf = ( data ) => data?.[ '@graph' ] ?? [];
 
+const typesOf = ( node ) => [ node[ '@type' ] ].flat();
+
+const PAGE_TYPES = [ 'WebPage', 'FAQPage' ];
+
+// Every object with a type in the graph, at any depth.
+const allNodes = ( value ) => {
+	if ( Array.isArray( value ) ) {
+		return value.flatMap( allNodes );
+	}
+	if ( value && typeof value === 'object' ) {
+		return [
+			...( value[ '@type' ] ? [ value ] : [] ),
+			...Object.values( value ).flatMap( allNodes ),
+		];
+	}
+	return [];
+};
+
+const pageNodes = ( graph ) =>
+	allNodes( graph ).filter( ( node ) =>
+		typesOf( node ).some( ( type ) => PAGE_TYPES.includes( type ) )
+	);
+
+// A group typed Article around a heading that is its headline.
+const articleGroup = ( headingText ) =>
+	[
+		`<!-- wp:group ${ JSON.stringify( {
+			schemaOrg: article(),
+		} ) } --><div class="wp-block-group">`,
+		`<!-- wp:heading ${ JSON.stringify( { schemaOrg: headline } ) } --><h2 class="wp-block-heading">${ headingText }</h2><!-- /wp:heading -->`,
+		'</div><!-- /wp:group -->',
+	].join( '\n' );
+
+// A single template: main (WebPage) > post content.
+const pageTemplate = () =>
+	[
+		'<!-- wp:template-part {"slug":"header","tagName":"header"} /-->',
+		`<!-- wp:group ${ JSON.stringify( {
+			tagName: 'main',
+			schemaOrg: webPage,
+		} ) } --><main class="wp-block-group">`,
+		'<!-- wp:post-content /-->',
+		'</main><!-- /wp:group -->',
+		'<!-- wp:template-part {"slug":"footer","tagName":"footer"} /-->',
+	].join( '\n' );
+
 test.describe( 'Template schema that contains the page', () => {
 	let post;
 	let home;
@@ -108,7 +154,7 @@ test.describe( 'Template schema that contains the page', () => {
 		} );
 	} );
 
-	test( 'a WebPage template nests the Article, which nests the FAQ in the post', async ( {
+	test( 'a WebPage template with an FAQ in the post is one FAQPage node', async ( {
 		page,
 		requestUtils,
 	}, testInfo ) => {
@@ -124,34 +170,35 @@ test.describe( 'Template schema that contains the page', () => {
 			contentType: 'application/json',
 		} );
 		const graph = graphOf( data );
-		const types = graph.map( ( node ) => node[ '@type' ] );
 
-		// The FAQ and the Article are nested, not separate nodes.
-		expect( types.sort() ).toEqual( [
+		// The FAQ is not nested in the page; the page is the FAQ.
+		expect( graph.map( ( node ) => node[ '@type' ] ).sort() ).toEqual( [
+			'FAQPage',
 			'Organization',
-			'WebPage',
 			'WebSite',
 		] );
+		expect( pageNodes( graph ) ).toHaveLength( 1 );
 
-		const webPageNode = graph.find(
-			( node ) => node[ '@type' ] === 'WebPage'
+		const pageNode = graph.find(
+			( node ) => node[ '@type' ] === 'FAQPage'
 		);
-		expect( webPageNode ).toMatchObject( {
+		expect( pageNode ).toMatchObject( {
 			'@id': post.link,
 			url: post.link,
 			name: 'Questions about bread',
 			isPartOf: { '@id': `${ home }#website` },
-			mainEntity: {
+			hasPart: {
 				'@type': 'Article',
 				url: post.link,
 				headline: 'Questions about bread',
 				publisher: { '@id': `${ home }#organization` },
-				hasPart: { '@type': 'FAQPage' },
 			},
 		} );
-		expect(
-			webPageNode.mainEntity.hasPart.mainEntity.length
-		).toBeGreaterThan( 1 );
+		expect( pageNode.hasPart.hasPart ).toBeUndefined();
+		expect( pageNode.mainEntity.length ).toBeGreaterThan( 1 );
+		for ( const question of pageNode.mainEntity ) {
+			expect( question[ '@type' ] ).toBe( 'Question' );
+		}
 
 		// The site nodes the page refers to are built from the site settings.
 		expect(
@@ -166,7 +213,7 @@ test.describe( 'Template schema that contains the page', () => {
 		).toMatchObject( { '@id': `${ home }#organization`, url: home } );
 	} );
 
-	test( 'contains set to empty keeps the FAQ as its own node', async ( {
+	test( 'contains set to empty keeps the Article apart from the FAQ page', async ( {
 		page,
 		requestUtils,
 	} ) => {
@@ -177,14 +224,53 @@ test.describe( 'Template schema that contains the page', () => {
 		} );
 
 		const graph = graphOf( await getJsonLdAt( page, post.link ) );
-		const webPageNode = graph.find(
-			( node ) => node[ '@type' ] === 'WebPage'
-		);
+		const pageNode = graph.find( ( node ) => node[ '@id' ] === post.link );
 
-		expect( webPageNode.mainEntity.hasPart ).toBeUndefined();
-		expect(
-			graph.filter( ( node ) => node[ '@type' ] === 'FAQPage' )
-		).toHaveLength( 1 );
+		expect( pageNodes( graph ) ).toHaveLength( 1 );
+		expect( pageNode[ '@type' ] ).toBe( 'FAQPage' );
+		expect( pageNode.hasPart ).toMatchObject( { '@type': 'Article' } );
+		expect( pageNode.hasPart.hasPart ).toBeUndefined();
+	} );
+
+	test( 'an FAQ and an Article group in the post of a WebPage template make one page', async ( {
+		page,
+		requestUtils,
+	} ) => {
+		const mixed = await requestUtils.createPost( {
+			title: 'Bread and questions',
+			content: `${ articleGroup( 'All about bread' ) }\n${ readPattern( 'faq' ) }`,
+			status: 'publish',
+		} );
+
+		try {
+			await requestUtils.rest( {
+				method: 'POST',
+				path: TEMPLATE,
+				data: { content: pageTemplate() },
+			} );
+
+			const graph = graphOf( await getJsonLdAt( page, mixed.link ) );
+			const pageNode = graph.find(
+				( node ) => node[ '@id' ] === mixed.link
+			);
+
+			expect( pageNodes( graph ) ).toHaveLength( 1 );
+			expect( pageNode[ '@type' ] ).toBe( 'FAQPage' );
+			expect( pageNode.mainEntity.length ).toBeGreaterThan( 1 );
+			for ( const question of pageNode.mainEntity ) {
+				expect( question[ '@type' ] ).toBe( 'Question' );
+			}
+			expect( pageNode.hasPart ).toMatchObject( {
+				'@type': 'Article',
+				headline: 'All about bread',
+			} );
+		} finally {
+			await requestUtils.rest( {
+				method: 'DELETE',
+				path: `/wp/v2/posts/${ mixed.id }`,
+				params: { force: true },
+			} );
+		}
 	} );
 
 	test( 'a synced pattern that shows post content does not loop', async ( {
@@ -217,12 +303,11 @@ test.describe( 'Template schema that contains the page', () => {
 			expect( response.status() ).toBe( 200 );
 
 			const graph = graphOf( await getJsonLdAt( page, looping.link ) );
-			const webPageNode = graph.find(
-				( node ) => node[ '@type' ] === 'WebPage'
+			const pageNode = graph.find(
+				( node ) => node[ '@id' ] === looping.link
 			);
-			expect( webPageNode.mainEntity.hasPart[ '@type' ] ).toBe(
-				'FAQPage'
-			);
+			expect( pageNodes( graph ) ).toHaveLength( 1 );
+			expect( pageNode[ '@type' ] ).toBe( 'FAQPage' );
 		} finally {
 			for ( const route of [
 				`/wp/v2/posts/${ looping.id }`,
@@ -237,14 +322,212 @@ test.describe( 'Template schema that contains the page', () => {
 		}
 	} );
 
-	test( 'without a typed template the post FAQ stays a top-level node', async ( {
+	test( 'without a typed template the post FAQ becomes the page node', async ( {
 		page,
 	} ) => {
 		const graph = graphOf( await getJsonLdAt( page, post.link ) );
 
-		expect( graph.map( ( node ) => node[ '@type' ] ) ).toEqual( [
+		expect( graph.map( ( node ) => node[ '@type' ] ).sort() ).toEqual( [
 			'FAQPage',
+			'Organization',
+			'WebSite',
 		] );
+		expect( pageNodes( graph ) ).toHaveLength( 1 );
+
+		const pageNode = graph.find(
+			( node ) => node[ '@type' ] === 'FAQPage'
+		);
+		expect( pageNode ).toMatchObject( {
+			'@id': post.link,
+			url: post.link,
+			name: 'Questions about bread',
+			isPartOf: { '@id': `${ home }#website` },
+			inLanguage: expect.any( String ),
+		} );
+		expect( pageNode.mainEntity.length ).toBeGreaterThan( 1 );
+		for ( const question of pageNode.mainEntity ) {
+			expect( question[ '@type' ] ).toBe( 'Question' );
+		}
+	} );
+} );
+
+test.describe( 'Page node without a typed template', () => {
+	test( 'a lone Article is the main entity of a WebPage node', async ( {
+		page,
+		requestUtils,
+	} ) => {
+		const settings = await requestUtils.rest( { path: '/wp/v2/settings' } );
+		const home = settings.url.replace( /\/?$/, '/' );
+		const single = await requestUtils.createPost( {
+			title: 'All about bread',
+			content: articleGroup( 'All about bread' ),
+			status: 'publish',
+		} );
+
+		try {
+			const graph = graphOf( await getJsonLdAt( page, single.link ) );
+
+			expect( graph.map( ( node ) => node[ '@type' ] ).sort() ).toEqual( [
+				'Article',
+				'Organization',
+				'WebPage',
+				'WebSite',
+			] );
+
+			const pageNode = graph.find(
+				( node ) => node[ '@type' ] === 'WebPage'
+			);
+			expect( pageNode ).toMatchObject( {
+				'@id': single.link,
+				url: single.link,
+				name: 'All about bread',
+				isPartOf: { '@id': `${ home }#website` },
+				mainEntity: { '@id': `${ single.link }#article` },
+			} );
+			expect(
+				graph.find( ( node ) => node[ '@type' ] === 'Article' )
+			).toMatchObject( {
+				'@id': `${ single.link }#article`,
+				mainEntityOfPage: { '@id': single.link },
+				headline: 'All about bread',
+			} );
+		} finally {
+			await requestUtils.rest( {
+				method: 'DELETE',
+				path: `/wp/v2/posts/${ single.id }`,
+				params: { force: true },
+			} );
+		}
+	} );
+} );
+
+test.describe( 'Page node of a graph that already has one', () => {
+	const ROUTE = '/schema-org-blocks-test/v1/assemble';
+	const pageId = 'https://example.com/bread/';
+	const faq = {
+		'@type': 'FAQPage',
+		mainEntity: [
+			{ '@type': 'Question', name: 'Why?' },
+			{ '@type': 'Question', name: 'How?' },
+		],
+	};
+	const yoastGraph = () => [
+		{
+			'@type': 'Article',
+			'@id': `${ pageId }#article`,
+			isPartOf: { '@id': pageId },
+			headline: 'Bread',
+		},
+		{
+			'@type': 'WebPage',
+			'@id': pageId,
+			url: pageId,
+			name: 'Bread',
+			isPartOf: { '@id': 'https://example.com/#website' },
+		},
+		{ '@type': 'WebSite', '@id': 'https://example.com/#website' },
+		{ '@type': 'Organization', '@id': 'https://example.com/#organization' },
+	];
+
+	const assemble = async ( requestUtils, graph, ownsPage ) => {
+		try {
+			return await requestUtils.rest( {
+				method: 'POST',
+				path: ROUTE,
+				data: { graph, pageId, ownsPage },
+			} );
+		} catch ( error ) {
+			if ( error.code === 'rest_no_route' ) {
+				return null;
+			}
+			throw error;
+		}
+	};
+
+	test( 'a block FAQPage joins the WebPage node as a second type', async ( {
+		requestUtils,
+	} ) => {
+		const result = await assemble(
+			requestUtils,
+			[ ...yoastGraph(), faq ],
+			false
+		);
+		test.skip(
+			! result,
+			'The test mu-plugin is not mounted on this server.'
+		);
+
+		const pages = pageNodes( result );
+		expect( pages ).toHaveLength( 1 );
+		expect( pages[ 0 ] ).toMatchObject( {
+			'@id': pageId,
+			'@type': [ 'WebPage', 'FAQPage' ],
+			name: 'Bread',
+			mainEntity: faq.mainEntity,
+		} );
+		expect( result.map( ( node ) => node[ '@type' ] ) ).toEqual( [
+			'Article',
+			[ 'WebPage', 'FAQPage' ],
+			'WebSite',
+			'Organization',
+		] );
+	} );
+
+	test( 'a WebPage node matched by url takes the page @id', async ( {
+		requestUtils,
+	} ) => {
+		const graph = yoastGraph();
+		delete graph[ 1 ][ '@id' ];
+		const result = await assemble( requestUtils, [ ...graph, faq ], false );
+		test.skip(
+			! result,
+			'The test mu-plugin is not mounted on this server.'
+		);
+
+		const pages = pageNodes( result );
+		expect( pages ).toHaveLength( 1 );
+		expect( pages[ 0 ] ).toMatchObject( {
+			'@id': pageId,
+			'@type': [ 'WebPage', 'FAQPage' ],
+		} );
+	} );
+
+	test( 'several entities are not linked to an added page node', async ( {
+		requestUtils,
+	} ) => {
+		const graph = [
+			{ '@type': 'Article', headline: 'Bread' },
+			{ '@type': 'Recipe', name: 'Sourdough' },
+		];
+		const result = await assemble( requestUtils, graph, true );
+		test.skip(
+			! result,
+			'The test mu-plugin is not mounted on this server.'
+		);
+
+		expect( result ).toEqual( [
+			{
+				'@id': pageId,
+				'@type': 'WebPage',
+				url: pageId,
+				isPartOf: { '@id': expect.stringMatching( /\/#website$/ ) },
+				inLanguage: expect.any( String ),
+			},
+			...graph,
+		] );
+	} );
+
+	test( 'without a page node the graph is left as it is', async ( {
+		requestUtils,
+	} ) => {
+		const graph = [ faq, { '@type': 'Article', headline: 'Bread' } ];
+		const result = await assemble( requestUtils, graph, false );
+		test.skip(
+			! result,
+			'The test mu-plugin is not mounted on this server.'
+		);
+
+		expect( result ).toEqual( graph );
 	} );
 } );
 

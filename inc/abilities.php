@@ -161,7 +161,7 @@ function register_abilities() : void {
 		'schema-org-blocks/get-schema-graph',
 		[
 			'label'               => __( 'Get structured data graph', 'schema-org-blocks' ),
-			'description'         => __( 'Returns the schema.org JSON-LD graph for a page, to check structured data after editing. Pass the url or post_id of a published page to read what the page outputs, including the template. For a draft, or block markup passed as content, the graph is built from those blocks only and leaves out template entities such as the site Organization.', 'schema-org-blocks' ),
+			'description'         => __( 'Returns the schema.org JSON-LD graph for a page, to check structured data after editing. Pass the url or post_id of a published page to read what the page outputs, including the template. For a draft, or block markup passed as content, the graph is built from those blocks only and leaves out template entities such as a typed template block. With a post_id it is joined into one WebPage node for the post.', 'schema-org-blocks' ),
 			'category'            => CATEGORY,
 			'execute_callback'    => __NAMESPACE__ . '\\get_schema_graph',
 			'permission_callback' => __NAMESPACE__ . '\\can_get_schema_graph',
@@ -375,8 +375,10 @@ function get_schema_graph( $input = null ) {
 
 	$result = [
 		'source' => 'content',
-		'graph'  => SchemaOutput\build_graph( array_values( $objects ) ),
-		'note'   => __( 'Built from the given blocks only. Entities from the template, such as the site Organization or a WebPage around the post, are not included.', 'schema-org-blocks' ),
+		'graph'  => SchemaOutput\build_graph( array_values( $objects ), (int) $post_id ),
+		'note'   => $post_id
+			? __( 'Built from the given blocks only, joined into one WebPage node for the post. Entities from the template, such as a typed template block, are not included.', 'schema-org-blocks' )
+			: __( 'Built from the given blocks only. Entities from the template, such as the site Organization or a WebPage around the post, are not included.', 'schema-org-blocks' ),
 	];
 
 	if ( null !== $post_id ) {

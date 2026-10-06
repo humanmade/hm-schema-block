@@ -290,12 +290,17 @@ Another entity links to it with a `reference` mapping, or **Link to site Organiz
 
 Template entities contain the entities on the page. An entity inside another entity's blocks is nested under the outer one's `contains` property, `hasPart` by default for creative works. `core/post-content` resolves to the post's blocks, so a typed group around post content in the single template contains the FAQ or how-to in each post. Set `"contains": ""` on a block to keep inner entities as separate nodes.
 
-The "Web page" Quick setup on a group types it `WebPage` with `@id` and `url` from the permalink (the same `@id` Yoast gives its WebPage), `name` from the post title, `isPartOf` the site, and `contains: mainEntity`. Use it on the template's main group, with an `Article` group inside around the post title and post content:
+The "Web page" Quick setup on a group types it `WebPage` with `@id` and `url` from the permalink (the same `@id` Yoast gives its WebPage), `name` from the post title, `isPartOf` the site, and `contains: mainEntity`. Use it on the template's main group, with an `Article` group inside around the post title and post content.
+
+A page is one node. A page subtype such as `FAQPage` is not a part of the WebPage, it is the WebPage, so the plugin merges an FAQ in the post into the page node, whether the template types a WebPage or not. With the template above and an FAQ in the post:
 
 ```json
-{ "@type": "WebPage", "@id": "https://example.com/bread/", "isPartOf": { "@id": "https://example.com/#website" },
-  "mainEntity": { "@type": "Article", "headline": "Bread", "hasPart": { "@type": "FAQPage", "mainEntity": [ … ] } } }
+{ "@type": "FAQPage", "@id": "https://example.com/bread/", "isPartOf": { "@id": "https://example.com/#website" },
+  "mainEntity": [ { "@type": "Question", … } ],
+  "hasPart": { "@type": "Article", "headline": "Bread" } }
 ```
+
+The page's `mainEntity` keeps only what its type accepts (an FAQPage takes Questions); other entities move to `hasPart`. Without a typed template the plugin adds the WebPage node itself (`@id` and `url` from the permalink, `name` from the post title, `isPartOf` the site, `inLanguage` from the site language). When the post has one other entity, such as an Article, the page's `mainEntity` points to it and it gets `mainEntityOfPage`. With several, they stay separate. Nothing is added to a post that outputs no schema.
 
 When the graph refers to `#website` or `#organization` and no block defines them, the plugin adds WebSite and Organization nodes built from the site settings. With Yoast SEO active it leaves that to Yoast.
 
@@ -383,7 +388,7 @@ Schema is collected from the blocks of the current page. Block themes render the
 
 ### With Yoast SEO
 
-When Yoast SEO is active, the schema objects are added to Yoast's graph using the `wpseo_schema_graph` filter.
+When Yoast SEO is active, the schema objects are added to Yoast's graph using the `wpseo_schema_graph` filter. On singular pages, page subtypes such as FAQPage are merged into Yoast's WebPage node, which then has the types `["WebPage", "FAQPage"]`, as Yoast's own FAQ block outputs.
 
 ### Without Yoast SEO
 

@@ -238,11 +238,15 @@ test.describe( 'Schema.org Frontend Output', () => {
 			'A description of the creative work.'
 		);
 
-		// Children must NOT appear as separate top-level entries.
+		// Children must NOT appear as separate top-level entries: only the page and site nodes join it.
 		const extraEntries = data[ '@graph' ].filter(
 			( n ) => n[ '@type' ] !== 'CreativeWork'
 		);
-		expect( extraEntries ).toHaveLength( 0 );
+		expect( extraEntries.map( ( n ) => n[ '@type' ] ).sort() ).toEqual( [
+			'Organization',
+			'WebPage',
+			'WebSite',
+		] );
 	} );
 
 	test( 'nested typed entity should attach as property of parent', async ( {

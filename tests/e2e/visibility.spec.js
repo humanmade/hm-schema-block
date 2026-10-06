@@ -44,6 +44,14 @@ const graphOf = ( data ) => data?.[ '@graph' ] ?? [];
 const ofType = ( data, type ) =>
 	graphOf( data ).filter( ( node ) => node[ '@type' ] === type );
 
+// A lone entity of a page gets an @id and points to the page as its main entity.
+const personNode = ( name ) => ( {
+	'@type': 'Person',
+	'@id': expect.stringMatching( /\/#person$/ ),
+	mainEntityOfPage: { '@id': expect.any( String ) },
+	name,
+} );
+
 test.describe( 'Schema output for hidden and protected content', () => {
 	test( 'a hidden typed group is left out of the graph', async ( {
 		publishMarkupAndGetJsonLd,
@@ -53,9 +61,7 @@ test.describe( 'Schema output for hidden and protected content', () => {
 				person( property( 'name', 'Hidden' ), hidden )
 		);
 
-		expect( ofType( data, 'Person' ) ).toEqual( [
-			{ '@type': 'Person', name: 'Shown' },
-		] );
+		expect( ofType( data, 'Person' ) ).toEqual( [ personNode( 'Shown' ) ] );
 	} );
 
 	test( 'a hidden property child is left out of its parent', async ( {
@@ -69,7 +75,7 @@ test.describe( 'Schema output for hidden and protected content', () => {
 		);
 
 		expect( ofType( data, 'Person' ) ).toEqual( [
-			{ '@type': 'Person', name: 'Visible' },
+			personNode( 'Visible' ),
 		] );
 	} );
 
@@ -81,9 +87,7 @@ test.describe( 'Schema output for hidden and protected content', () => {
 				group( hidden, person( property( 'name', 'Twin' ) ) )
 		);
 
-		expect( ofType( data, 'Person' ) ).toEqual( [
-			{ '@type': 'Person', name: 'Twin' },
-		] );
+		expect( ofType( data, 'Person' ) ).toEqual( [ personNode( 'Twin' ) ] );
 	} );
 
 	test( 'a typed group inside a hidden plain group is left out', async ( {
@@ -155,10 +159,9 @@ test.describe( 'Schema output for hidden and protected content', () => {
 		).toEqual( [] );
 
 		await page.goto( `/?p=${ post.id }` );
-		expect( ofType( await getJsonLd(), 'Person' ) ).toContainEqual( {
-			'@type': 'Person',
-			name: 'Loop person',
-		} );
+		expect( ofType( await getJsonLd(), 'Person' ) ).toContainEqual(
+			personNode( 'Loop person' )
+		);
 	} );
 
 	test( 'image url comes from its link, not from a link in its caption', async ( {

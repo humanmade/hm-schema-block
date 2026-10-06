@@ -176,8 +176,14 @@ test.describe( 'Abilities', () => {
 
 			expect( result.source ).toBe( 'content' );
 			expect( result.post_id ).toBe( post.id );
+			expect( result.graph ).toHaveLength( 3 );
 			expect( result.graph ).toContainEqual(
-				expect.objectContaining( { '@type': 'FAQPage' } )
+				expect.objectContaining( {
+					'@type': 'FAQPage',
+					'@id': post.link,
+					name: post.title.raw,
+					mainEntity: expect.anything(),
+				} )
 			);
 		} );
 

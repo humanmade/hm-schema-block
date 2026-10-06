@@ -254,6 +254,8 @@ test.describe( 'Schema.org patterns', () => {
 				const [ article ] = ofType( data, 'Article' );
 				expect( article ).toEqual( {
 					'@type': 'Article',
+					'@id': `${ post.link }#article`,
+					mainEntityOfPage: { '@id': post.link },
 					url: post.link,
 					publisher: { '@id': `${ site.home }#organization` },
 					keywords: site.category.name,

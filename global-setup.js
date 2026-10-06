@@ -56,7 +56,8 @@ function generateSalts() {
 /**
  * Boots one Playground instance for the whole run, unless WP_BASE_URL is
  * already set. Reads ./blueprint.json (or WP_BLUEPRINT_PATH) and auto-mounts
- * the project directory, which also activates the plugin.
+ * the project directory, which also activates the plugin. Mounts the test-only
+ * must-use plugins from tests/e2e/mu-plugins.
  *
  * WP_PLAYGROUND_PHP / WP_PLAYGROUND_WP override the blueprint's
  * preferredVersions, because the CLI lets the blueprint win over its own
@@ -99,6 +100,12 @@ async function startPlayground() {
 		php,
 		wp,
 		autoMount: process.cwd(),
+		mount: [
+			{
+				hostPath: path.resolve( __dirname, 'tests/e2e/mu-plugins' ),
+				vfsPath: '/wordpress/wp-content/mu-plugins',
+			},
+		],
 		blueprint,
 	};
 
