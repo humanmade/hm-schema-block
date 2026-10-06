@@ -130,7 +130,7 @@ function validate( array $graph ) : array {
 /**
  * Get the label of a property of a type, falling back to its name.
  *
- * Names of nested paths, and of alternatives joined with " or ", are described one by one.
+ * A nested path such as "author.name" is described by the label of each segment, joined with " › ". Alternatives joined with " or " are described one by one.
  *
  * @param string|null $type     Schema type of the node.
  * @param string|null $property Property name.
@@ -149,9 +149,25 @@ function get_property_label( ?string $type, ?string $property ) : string {
 		return sprintf( __( 'one of %s', 'schema-org-blocks' ), implode( ', ', $labels ) );
 	}
 
-	$properties = $type ? SchemaTypes\get_type_properties( $type ) : [];
+	$types  = $type ? [ $type ] : [];
+	$labels = [];
 
-	return $properties[ $property ]['label'] ?? $property;
+	foreach ( explode( '.', $property ) as $name ) {
+		$definition = null;
+
+		foreach ( $types as $candidate ) {
+			$definition = SchemaTypes\get_type_properties( $candidate )[ $name ] ?? null;
+
+			if ( $definition ) {
+				break;
+			}
+		}
+
+		$labels[] = $definition['label'] ?? $name;
+		$types    = $definition ? array_filter( (array) $definition['type'], 'is_string' ) : [];
+	}
+
+	return implode( ' › ', $labels );
 }
 
 /**
