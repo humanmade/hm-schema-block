@@ -260,6 +260,11 @@ const SUGGESTED_SOURCES = {
 };
 
 /**
+ * Properties that describe the post only on Article and WebPage blocks.
+ */
+const POST_ONLY_PROPERTIES = [ 'name', 'url', 'description' ];
+
+/**
  * Site fields suggested for the site Organization and WebSite.
  */
 const SUGGESTED_SITE_SOURCES = {
@@ -282,11 +287,17 @@ function getSuggestedSource( schemaType, property ) {
 		isTypeOrSubtype( schemaType, 'Organization' ) ||
 		isTypeOrSubtype( schemaType, 'WebSite' );
 
-	return (
-		( isSite && SUGGESTED_SITE_SOURCES[ property ] ) ||
-		SUGGESTED_SOURCES[ property ] ||
-		'content'
-	);
+	const isPost =
+		isTypeOrSubtype( schemaType, 'Article' ) ||
+		isTypeOrSubtype( schemaType, 'WebPage' );
+
+	if ( isSite && SUGGESTED_SITE_SOURCES[ property ] ) {
+		return SUGGESTED_SITE_SOURCES[ property ];
+	}
+	if ( ! isPost && POST_ONLY_PROPERTIES.includes( property ) ) {
+		return 'content';
+	}
+	return SUGGESTED_SOURCES[ property ] || 'content';
 }
 
 /**
