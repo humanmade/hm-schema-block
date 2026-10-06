@@ -34,7 +34,6 @@ import {
 } from './utils/smart-defaults';
 
 import './variations';
-import './editor.scss';
 
 /**
  * Add schemaOrg attribute to all blocks.
@@ -234,22 +233,20 @@ const withSchemaOrgControls = createHigherOrderComponent( ( BlockEdit ) => {
 								}
 							/>
 						</VStack>
-
-						{ /* Only show property mappings for blocks with their own schema type.
-						     Child blocks that are properties of a parent use the isProperty
-						     toggle above — their value comes from block content automatically. */ }
-						{ schemaOrg.type && (
-							<AttributeMappingControls
-								attributes={ attributes }
-								schemaType={ schemaOrg.type }
-								mappings={ schemaOrg.mappings || {} }
-								claimedProperties={ claimedProperties }
-								onChange={ ( mappings ) =>
-									updateSchemaOrg( { mappings } )
-								}
-							/>
-						) }
 					</PanelBody>
+					{ /* Only blocks with their own schema type map properties. Child blocks that
+					     are properties of a parent get their value from block content. */ }
+					{ schemaOrg.type && (
+						<AttributeMappingControls
+							attributes={ attributes }
+							schemaType={ schemaOrg.type }
+							mappings={ schemaOrg.mappings || {} }
+							claimedProperties={ claimedProperties }
+							onChange={ ( mappings ) =>
+								updateSchemaOrg( { mappings } )
+							}
+						/>
+					) }
 				</InspectorControls>
 				{ schemaOrg.type && (
 					<InspectorControls group="advanced">
