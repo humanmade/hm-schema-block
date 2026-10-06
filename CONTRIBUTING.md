@@ -184,11 +184,14 @@ test( 'should do something', async ( { editor, page } ) => {
     await editor.insertBlock( { name: 'core/group' } );
 
     // Act
-    await page.getByRole( 'button', { name: 'Schema.org Mapping' } ).click();
-    await page.getByLabel( 'Schema Type' ).selectOption( 'Article' );
+    await page.getByRole( 'button', { name: 'Schema.org', exact: true } ).click();
+    await page.getByRole( 'combobox', { name: 'Schema Type' } ).fill( 'Article' );
+    await page.getByRole( 'option', { name: 'Article', exact: true } ).click();
 
     // Assert
-    await expect( page.getByText( 'Schema Property Mapping' ) ).toBeVisible();
+    await expect(
+        page.getByRole( 'heading', { name: 'Schema.org properties' } )
+    ).toBeVisible();
 } );
 ```
 

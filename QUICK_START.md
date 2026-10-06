@@ -24,7 +24,7 @@ npm run playground:start
 2. Search for **FAQ** or **How-to** and insert it. Both are variations of the Accordion block.
 3. Fill in the headings and panels. Each item becomes a Question with an answer, or a HowToStep. The How-to is named after the post title.
 
-Already have an Accordion or Group block? Select it, open **"Schema.org Mapping"** and click **FAQ** or **How-to** under Quick setup. Details blocks inside an FAQ become questions too: the summary is the question and the inner blocks are the answer.
+Already have an Accordion or Group block? Select it, open **"Schema.org"** and click **FAQ** or **How-to** under Quick setup. Details blocks inside an FAQ become questions too: the summary is the question and the inner blocks are the answer.
 
 Google shows FAQ rich results only for some sites and no longer shows how-to rich results. The markup is still valid and other consumers use it.
 
@@ -32,19 +32,19 @@ Google shows FAQ rich results only for some sites and no longer shows how-to ric
 
 1. Create a new post in WordPress
 2. Add a **Group** block (or any container block)
-3. In the block inspector sidebar, open **"Schema.org Mapping"**
+3. In the block inspector sidebar, open **"Schema.org"**
 4. Select **"Article"** as the Schema Type
 5. Add a **Heading** and a **Paragraph** inside the Group. They map to `headline` and `description` on their own.
 
-You can also add mappings on the Group itself. Each mapping has a source: a block attribute, the block text, the inner blocks text, a post field (title, URL, dates, excerpt, author, featured image), a site field (name, tagline, URL, logo), or a link to the site Organization. For example, map `headline` to Post title.
+You can also map properties on the Group itself: use the menu of the **"Schema.org properties"** panel to add one. Each property has a source: a block attribute, the block text, the inner blocks text, a post field (title, URL, dates, excerpt, author, featured image), a site field (name, tagline, URL, logo), or a link to the site Organization. For example, map `headline` to Post title.
 
 ### 2. Add an Image with Auto-Mapping
 
 1. Inside the Group block, add an **Image** block
 2. Upload or select an image
-3. Open the **"Schema.org Mapping"** panel
+3. Open the **"Schema.org"** panel
 4. Notice it's automatically configured:
-   - ✅ "Map as property of parent" is checked
+   - ✅ "Use as a property of Article" is checked
    - ✅ Property name is set to "image"
    - ✅ Type is set to "ImageObject"
    - ✅ Mappings are pre-configured

@@ -40,6 +40,7 @@ test.describe( 'Graph controls', () => {
 			const groupId = await insertBlock( { name: 'core/group' } );
 			await schemaPanel.setType( 'Organization' );
 
+			await schemaPanel.openAdvanced();
 			const entityId = schemaPanel.sidebar.getByLabel( 'Entity ID' );
 			await entityId.fill( 'Main Org' );
 			await expect( entityId ).toHaveValue( 'main-org' );
@@ -62,6 +63,7 @@ test.describe( 'Graph controls', () => {
 			const groupId = await insertBlock( { name: 'core/group' } );
 			await schemaPanel.setType( 'Article' );
 
+			await schemaPanel.openAdvanced();
 			const nest = schemaPanel.sidebar.getByLabel(
 				'Nest inner entities as'
 			);
@@ -82,9 +84,7 @@ test.describe( 'Graph controls', () => {
 				( await getSchemaOrg( page, groupId ) ).contains
 			).toBeUndefined();
 
-			await schemaPanel.sidebar
-				.getByLabel( 'Schema Type' )
-				.selectOption( 'WebPage' );
+			await schemaPanel.setType( 'WebPage' );
 			await nest.selectOption( { label: 'Main Entity' } );
 			expect( ( await getSchemaOrg( page, groupId ) ).contains ).toBe(
 				'mainEntity'
@@ -92,9 +92,7 @@ test.describe( 'Graph controls', () => {
 			await expect( nest ).toHaveValue( 'mainEntity' );
 
 			// Article has no mainEntity, so switching back drops it for the default.
-			await schemaPanel.sidebar
-				.getByLabel( 'Schema Type' )
-				.selectOption( 'Article' );
+			await schemaPanel.setType( 'Article' );
 			expect(
 				( await getSchemaOrg( page, groupId ) ).contains
 			).toBeUndefined();
@@ -111,6 +109,7 @@ test.describe( 'Graph controls', () => {
 			// Group A: an Organization named by its heading, with the id "maker".
 			const makerId = await insertBlock( { name: 'core/group' } );
 			await schemaPanel.setType( 'Organization' );
+			await schemaPanel.openAdvanced();
 			await schemaPanel.sidebar.getByLabel( 'Entity ID' ).fill( 'maker' );
 			await insertBlock(
 				{ name: 'core/heading', attributes: { content: 'Acme' } },
@@ -143,21 +142,13 @@ test.describe( 'Graph controls', () => {
 			await editor.selectBlocks(
 				editor.canvas.locator( `[data-block="${ articleId }"]` )
 			);
-			await schemaPanel.open();
+			const source = await schemaPanel.addProperty( 'Publisher' );
+			await source.selectOption( {
+				label: 'Link to another entity by ID',
+			} );
 			await schemaPanel.sidebar
-				.getByRole( 'button', { name: 'Add mapping' } )
-				.click();
-			const row = schemaPanel.sidebar.locator(
-				'.schema-org-blocks-attribute-mapping__row'
-			);
-			await expect( row ).toHaveCount( 1 );
-			await row
-				.getByLabel( 'Schema Property' )
-				.selectOption( 'publisher' );
-			await row
-				.getByLabel( 'Source' )
-				.selectOption( { label: 'Link to another entity by ID' } );
-			await row.getByLabel( 'Linked entity ID' ).fill( 'maker' );
+				.getByLabel( 'Linked entity ID' )
+				.fill( 'maker' );
 
 			expect(
 				( await getSchemaOrg( page, articleId ) ).mappings.publisher
@@ -230,6 +221,7 @@ test.describe( 'Graph controls', () => {
 			await schemaPanel.sidebar
 				.getByRole( 'button', { name: 'Web page', exact: true } )
 				.click();
+			await schemaPanel.openAdvanced();
 
 			await expect(
 				schemaPanel.sidebar.getByLabel( 'Entity ID' )

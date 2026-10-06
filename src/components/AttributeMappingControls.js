@@ -4,15 +4,17 @@
  * @package
  */
 
+/* eslint-disable @wordpress/no-unsafe-wp-apis -- ToolsPanel is only exported as experimental. */
+
 import {
 	SelectControl,
-	Button,
-	Notice,
 	TextControl,
+	__experimentalToolsPanel as ToolsPanel,
+	__experimentalToolsPanelItem as ToolsPanelItem,
+	__experimentalVStack as VStack,
 } from '@wordpress/components';
 import { __ } from '@wordpress/i18n';
 import { useMemo } from '@wordpress/element';
-import { plus, trash } from '@wordpress/icons';
 
 import { toEntityId } from './EntityControls';
 
@@ -26,25 +28,28 @@ const AttributeMappingControls = ( {
 	const { schemaProperties } = window.schemaOrgBlocksData || {};
 
 	// Properties available for this schema type, minus any already claimed by child blocks.
-	const availableProperties = useMemo( () => {
-		if (
-			! schemaType ||
-			! schemaProperties ||
-			! schemaProperties[ schemaType ]
-		) {
-			return [];
-		}
-
-		return Object.entries( schemaProperties[ schemaType ] )
+	// Properties that already have a mapping stay listed so they can be changed or removed.
+	const properties = useMemo( () => {
+		const typeProperties = schemaProperties?.[ schemaType ] || {};
+		const list = Object.entries( typeProperties )
 			.filter(
-				( [ propName ] ) => ! claimedProperties.includes( propName )
+				( [ propName ] ) =>
+					! claimedProperties.includes( propName ) ||
+					mappings[ propName ]
 			)
 			.map( ( [ propName, propConfig ] ) => ( {
 				label: propConfig.label || propName,
 				value: propName,
-				type: propConfig.type,
 			} ) );
-	}, [ schemaType, schemaProperties, claimedProperties ] );
+
+		Object.keys( mappings )
+			.filter( ( propName ) => ! typeProperties[ propName ] )
+			.forEach( ( propName ) =>
+				list.push( { label: propName, value: propName } )
+			);
+
+		return list;
+	}, [ schemaType, schemaProperties, claimedProperties, mappings ] );
 
 	// Block attributes available as mapping sources (excludes schemaOrg itself).
 	const availableAttributes = useMemo( () => {
@@ -60,39 +65,28 @@ const AttributeMappingControls = ( {
 			} ) );
 	}, [ attributes ] );
 
-	const addMapping = () => {
-		const unmappedProperty = availableProperties.find(
-			( prop ) => ! mappings[ prop.value ]
-		);
-		if ( ! unmappedProperty ) {
-			return;
-		}
-
-		// Infer source: use attribute if the block has mappable attributes, content otherwise.
-		const hasAttributes = availableAttributes.length > 0;
-		const newMappings = {
+	// Infer source: use attribute if the block has mappable attributes, content otherwise.
+	const addMapping = ( property ) => {
+		onChange( {
 			...mappings,
-			[ unmappedProperty.value ]: hasAttributes
-				? {
-						source: 'attribute',
-						attributeName: availableAttributes[ 0 ]?.value || '',
-					}
-				: { source: 'content' },
-		};
-
-		onChange( newMappings );
+			[ property ]:
+				availableAttributes.length > 0
+					? {
+							source: 'attribute',
+							attributeName: availableAttributes[ 0 ].value,
+						}
+					: { source: 'content' },
+		} );
 	};
 
 	const updateMapping = ( property, updates ) => {
-		const newMappings = {
+		onChange( {
 			...mappings,
 			[ property ]: {
 				...( mappings[ property ] || {} ),
 				...updates,
 			},
-		};
-
-		onChange( newMappings );
+		} );
 	};
 
 	const removeMapping = ( property ) => {
@@ -101,132 +95,97 @@ const AttributeMappingControls = ( {
 		onChange( newMappings );
 	};
 
-	const currentMappings = Object.entries( mappings );
+	if ( properties.length === 0 ) {
+		return null;
+	}
 
 	return (
-		<div className="schema-org-blocks-attribute-mapping">
-			<div className="schema-org-blocks-attribute-mapping__header">
-				<strong>
-					{ __( 'Schema Property Mapping', 'schema-org-blocks' ) }
-				</strong>
-				<Button
-					icon={ plus }
-					label={ __( 'Add mapping', 'schema-org-blocks' ) }
-					onClick={ addMapping }
-					variant="secondary"
-					size="small"
-					disabled={
-						currentMappings.length >= availableProperties.length
-					}
-				/>
-			</div>
+		<ToolsPanel
+			label={ __( 'Schema.org properties', 'schema-org-blocks' ) }
+			resetAll={ () => onChange( {} ) }
+		>
+			{ properties.map( ( { label, value: property } ) => {
+				const mapping = mappings[ property ] || {};
 
-			{ currentMappings.length === 0 && (
-				<Notice status="info" isDismissible={ false }>
-					{ __(
-						"No property mappings configured. Add mappings to populate schema properties from this block's own data. Child blocks can be assigned to properties via their own Schema.org Mapping settings.",
-						'schema-org-blocks'
-					) }
-				</Notice>
-			) }
+				return (
+					<ToolsPanelItem
+						key={ property }
+						label={ label }
+						hasValue={ () => !! mappings[ property ] }
+						onSelect={ () => addMapping( property ) }
+						onDeselect={ () => removeMapping( property ) }
+					>
+						<VStack spacing={ 4 }>
+							<SelectControl
+								__next40pxDefaultSize
+								__nextHasNoMarginBottom
+								label={ label }
+								value={ getSourceKey( mapping ) }
+								options={ SOURCES }
+								onChange={ ( key ) =>
+									updateMapping(
+										property,
+										parseSourceKey( key )
+									)
+								}
+							/>
 
-			{ currentMappings.map( ( [ property, mapping ] ) => (
-				<div
-					key={ property }
-					className="schema-org-blocks-attribute-mapping__row"
-				>
-					<SelectControl
-						__next40pxDefaultSize
-						__nextHasNoMarginBottom
-						label={ __( 'Schema Property', 'schema-org-blocks' ) }
-						value={ property }
-						options={ [
-							{ label: property, value: property },
-							...availableProperties.filter(
-								( p ) =>
-									! mappings[ p.value ] ||
-									p.value === property
-							),
-						] }
-						onChange={ ( newProp ) => {
-							if ( newProp !== property ) {
-								const newMappings = { ...mappings };
-								delete newMappings[ property ];
-								newMappings[ newProp ] = mapping;
-								onChange( newMappings );
-							}
-						} }
-					/>
-
-					<SelectControl
-						__next40pxDefaultSize
-						__nextHasNoMarginBottom
-						label={ __( 'Source', 'schema-org-blocks' ) }
-						value={ getSourceKey( mapping ) }
-						options={ SOURCES }
-						onChange={ ( key ) =>
-							updateMapping( property, parseSourceKey( key ) )
-						}
-					/>
-
-					{ getSourceKey( mapping ) === CUSTOM_REFERENCE && (
-						<TextControl
-							__next40pxDefaultSize
-							__nextHasNoMarginBottom
-							label={ __(
-								'Linked entity ID',
-								'schema-org-blocks'
-							) }
-							value={ mapping.id || '' }
-							onChange={ ( id ) =>
-								updateMapping( property, {
-									id: toEntityId( id ),
-								} )
-							}
-							help={ __(
-								'The Entity ID set on the block to link to.',
-								'schema-org-blocks'
-							) }
-						/>
-					) }
-
-					{ mapping.source === 'attribute' && (
-						<SelectControl
-							__next40pxDefaultSize
-							__nextHasNoMarginBottom
-							label={ __( 'Attribute', 'schema-org-blocks' ) }
-							value={ mapping.attributeName || '' }
-							options={ [
-								{
-									label: __(
-										'Select attribute…',
+							{ getSourceKey( mapping ) === CUSTOM_REFERENCE && (
+								<TextControl
+									__next40pxDefaultSize
+									__nextHasNoMarginBottom
+									label={ __(
+										'Linked entity ID',
 										'schema-org-blocks'
-									),
-									value: '',
-								},
-								...availableAttributes,
-							] }
-							onChange={ ( attributeName ) =>
-								updateMapping( property, { attributeName } )
-							}
-							help={ __(
-								'Leave empty to use block content instead.',
-								'schema-org-blocks'
+									) }
+									value={ mapping.id || '' }
+									onChange={ ( id ) =>
+										updateMapping( property, {
+											id: toEntityId( id ),
+										} )
+									}
+									help={ __(
+										'The Entity ID set on the block to link to.',
+										'schema-org-blocks'
+									) }
+								/>
 							) }
-						/>
-					) }
 
-					<Button
-						icon={ trash }
-						label={ __( 'Remove mapping', 'schema-org-blocks' ) }
-						onClick={ () => removeMapping( property ) }
-						variant="secondary"
-						isDestructive
-						size="small"
-					/>
-				</div>
-			) ) }
-		</div>
+							{ mapping.source === 'attribute' && (
+								<SelectControl
+									__next40pxDefaultSize
+									__nextHasNoMarginBottom
+									label={ __(
+										'Attribute',
+										'schema-org-blocks'
+									) }
+									value={ mapping.attributeName || '' }
+									options={ [
+										{
+											label: __(
+												'Select attribute…',
+												'schema-org-blocks'
+											),
+											value: '',
+										},
+										...availableAttributes,
+									] }
+									onChange={ ( attributeName ) =>
+										updateMapping( property, {
+											attributeName,
+										} )
+									}
+									help={ __(
+										'Leave empty to use block content instead.',
+										'schema-org-blocks'
+									) }
+								/>
+							) }
+						</VStack>
+					</ToolsPanelItem>
+				);
+			} ) }
+		</ToolsPanel>
 	);
 };
 

@@ -28,11 +28,11 @@ A WordPress plugin that extends all blocks with schema.org type mapping and stru
 
 Search the inserter for "schema" to find the FAQ and How-to blocks.
 
-<img src="docs/media/screenshots/faq-quick-setup.png" width="280" alt="The Schema.org Mapping panel of an FAQ accordion, with the FAQ Quick setup button pressed and the type set to FAQ Page">
+<img src="docs/media/screenshots/faq-quick-setup.png" width="280" alt="The Schema.org panel of an FAQ accordion, with the FAQ Quick setup button pressed and the type set to FAQ Page">
 
 The FAQ block comes set up as an FAQPage.
 
-<img src="docs/media/screenshots/accordion-item-question.png" width="280" alt="The Schema.org Mapping panel of an accordion item, mapped to the Questions property with the value type Question">
+<img src="docs/media/screenshots/accordion-item-question.png" width="280" alt="The Schema.org panel of an accordion item, mapped to the Questions property with the value type Question">
 
 Each accordion item is a Question, and its panel is the answer.
 
@@ -52,7 +52,7 @@ The graph settings give an entity an ID and choose how it nests the entities ins
 
 With a typed template, the page has one connected graph (JSON-LD shown in a demo side panel).
 
-<img src="docs/media/screenshots/blog-list-preset.png" width="280" alt="The Schema.org Mapping panel of a Query Loop block, with the Blog and Item list Quick setup buttons">
+<img src="docs/media/screenshots/blog-list-preset.png" width="280" alt="The Schema.org panel of a Query Loop block, with the Blog and Item list Quick setup buttons">
 
 Query Loop blocks offer Blog and Item list presets.
 
@@ -126,11 +126,11 @@ npm run format
 
 1. Edit any post or page in the block editor
 2. Select a block (e.g., a Group block)
-3. In the block inspector, open the "Schema.org Mapping" panel
+3. In the block inspector, open the "Schema.org" panel
 4. Select a schema type (e.g., "Article", "Organization", "Place")
-5. Add mappings from schema properties to a source
+5. In the "Schema.org properties" panel that appears, use its menu to add a property and pick a source for it
 
-Each mapping has a source:
+Each property has a source:
 
 - **Block attribute**: a block attribute. This includes attributes that core blocks store in their markup, such as the image `url` or the details `summary`. With no attribute picked, the block text is used.
 - **Block text**: the text of the block, including its inner blocks.
@@ -159,8 +159,8 @@ Google shows FAQ rich results only for some sites and no longer shows how-to ric
 
 When a block has a schema type, any block inside it can:
 
-1. **Map as a property**: turn on "Map as property of parent" and pick the property. The block's text becomes the value.
-2. **Pick a value type**: a property block can also pick a type from those the property accepts. It is then output as a nested object, with its own mappings and child properties.
+1. **Use as a property**: turn on "Use as a property of …" and pick the property. A typed block is only offered the properties that accept its type, and a single match is picked for you. The block's text becomes the value.
+2. **Pick a value type**: a property block can also pick a type from those the property accepts. When only one type fits, it is set for you. It is then output as a nested object, with its own mappings and child properties.
 3. **Be its own entity**: leave the toggle off and pick any schema type. The block is output as a separate object.
 
 A property block belongs to its nearest typed ancestor. Untyped containers in between, such as groups, columns, rows and template parts, are passed through. The search stops at:
@@ -199,7 +199,7 @@ When you add a block inside a typed parent, it is set up for you:
 - **core/site-logo**: `logo` or `image`
 - **core/post-template**: a `BlogPosting` for `itemListElement` or `blogPost`
 
-The first property the parent type has is used. Headings and paragraphs inside a Question, Answer or HowToStep get no default, since their text already feeds the answer. Most blocks get a default only for the first unconfigured block of that type, and only while no other block under the same typed ancestor claims the property. Images, accordion items and details blocks repeat. If you turn off "Map as property of parent", the block keeps that choice.
+The first property the parent type has is used. Headings and paragraphs inside a Question, Answer or HowToStep get no default, since their text already feeds the answer. Most blocks get a default only for the first unconfigured block of that type, and only while no other block under the same typed ancestor claims the property. Images, accordion items and details blocks repeat. If you turn off "Use as a property of …", the block keeps that choice.
 
 ### Example: Article with Schema
 
@@ -306,7 +306,7 @@ When the graph refers to `#website` or `#organization` and no block defines them
 
 An entity nested more than once, such as the same author on every post in a list, is output once as a top-level node and referenced by `{"@id": …}` everywhere else. Author blocks give a Person with the `@id` Yoast uses for the same user (`#/schema/person/<hash>`) and the author archive as `url`. Values are not copied down from outer entities to nested ones: schema.org and search engines don't infer them, so shared things are linked by `@id` instead, and the page language is mapped explicitly (`inLanguage` from the site language on the Web page and Article presets).
 
-Typed blocks show a Graph section in the inspector, in the post editor and the site editor: **Entity ID** names the entity for `@id` links, and **Nest inner entities as** picks the default, none, or any property that takes entities. A mapping's Source can link to the site Organization, the site Web site, or any Entity ID.
+Typed blocks show these in the Advanced panel of the inspector, in the post editor and the site editor: **Entity ID** names the entity for `@id` links, and **Nest inner entities as** picks the default, none, or any property that takes entities. A mapping's Source can link to the site Organization, the site Web site, or any Entity ID.
 
 ### Patterns
 
