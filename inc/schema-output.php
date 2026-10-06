@@ -518,7 +518,7 @@ function is_breadcrumb_list( array $node ) : bool {
 }
 
 /**
- * Set the page node's `breadcrumb` to the first top-level BreadcrumbList with an @id, when it has none.
+ * Set the page node's `breadcrumb` to the top-level BreadcrumbList whose @id is the page's `#breadcrumb`, when it has none.
  *
  * @param array<string, mixed>             $hub   Page node.
  * @param array<int, array<string, mixed>> $graph Other top-level nodes.
@@ -530,7 +530,7 @@ function link_breadcrumb( array $hub, array $graph ) : array {
 	}
 
 	foreach ( $graph as $node ) {
-		if ( is_array( $node ) && isset( $node['@id'] ) && is_breadcrumb_list( $node ) ) {
+		if ( is_array( $node ) && ( $node['@id'] ?? null ) === $hub['@id'] . '#breadcrumb' && is_breadcrumb_list( $node ) ) {
 			$hub['breadcrumb'] = [ '@id' => $node['@id'] ];
 			break;
 		}
