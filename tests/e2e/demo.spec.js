@@ -590,7 +590,7 @@ test.describe( 'Demo media', () => {
 				'All required structured data is set.'
 			);
 			await demo.caption(
-				'Before publishing, a check lists any structured data that is missing.',
+				'Before publishing, a check lists problems in the structured data.',
 				2400
 			);
 			await demo.click(
