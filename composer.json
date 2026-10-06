@@ -10,7 +10,8 @@
 		}
 	],
 	"require": {
-		"php": ">=8.0"
+		"php": ">=8.0",
+		"humanmade/schema-org-validator": "dev-main"
 	},
 	"require-dev": {
 		"dealerdirect/phpcodesniffer-composer-installer": "^1.0",

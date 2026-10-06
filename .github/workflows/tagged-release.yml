@@ -27,6 +27,15 @@ jobs:
             - name: Install dependencies
               run: npm ci
 
+            - name: Set up PHP
+              uses: shivammathur/setup-php@v2
+              with:
+                  php-version: '8.3'
+                  tools: composer
+
+            - name: Install production PHP packages
+              run: composer install --no-dev --optimize-autoloader --no-interaction
+
             - name: Set version from tag
               env:
                   TAG: ${{ github.event.release.tag_name }}

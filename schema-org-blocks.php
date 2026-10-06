@@ -22,8 +22,8 @@ define( 'SCHEMA_ORG_BLOCKS_PATH', __DIR__ );
 define( 'SCHEMA_ORG_BLOCKS_URL', plugins_url( '', __FILE__ ) );
 define( 'SCHEMA_ORG_BLOCKS_VERSION', '__VERSION__' );
 
-// Require Composer autoloader.
-if ( file_exists( __DIR__ . '/vendor/autoload.php' ) ) {
+// Load the bundled Composer packages unless a site-level install already provides the validator.
+if ( ! class_exists( \HumanMade\SchemaOrgValidator\Validator::class ) && file_exists( __DIR__ . '/vendor/autoload.php' ) ) {
 	require_once __DIR__ . '/vendor/autoload.php';
 }
 
