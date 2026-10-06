@@ -11,7 +11,7 @@
 	],
 	"require": {
 		"php": ">=8.0",
-		"humanmade/schema-org-validator": "dev-main"
+		"humanmade/schema-org-validator": "^0.1"
 	},
 	"require-dev": {
 		"dealerdirect/phpcodesniffer-composer-installer": "^1.0",
