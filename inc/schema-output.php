@@ -800,45 +800,6 @@ function is_yoast_seo_active() : bool {
 }
 
 /**
- * List the required properties the nodes of a graph are missing.
- *
- * Every typed node is checked, nested ones too. A property that is a reference to another node
- * (an object with an @id) counts as set. A property is missing when it is absent or empty.
- *
- * @param array<int, array<string, mixed>> $graph Schema objects.
- * @return array<int, array{type: string, property: string|array<int, string>, label: string}> The type and label of the node, and the missing property, or the properties of which one is needed.
- */
-function get_missing( array $graph ) : array {
-	$missing = [];
-
-	$walk = static function ( $value ) use ( &$walk, &$missing ) : void {
-		if ( ! is_array( $value ) ) {
-			return;
-		}
-
-		foreach ( get_node_types( $value ) as $type ) {
-			foreach ( SchemaTypes\get_required_properties( $type ) as $required ) {
-				$is_set = array_filter( (array) $required, static fn ( $property ) => isset( $value[ $property ] ) && ! BlockExtensions\is_empty_value( $value[ $property ] ) );
-
-				if ( ! $is_set ) {
-					$missing[] = [
-						'type'     => $type,
-						'property' => $required,
-						'label'    => get_node_label( $value, $type ),
-					];
-				}
-			}
-		}
-
-		array_map( $walk, $value );
-	};
-
-	$walk( $graph );
-
-	return array_values( array_unique( $missing, SORT_REGULAR ) );
-}
-
-/**
  * Get a name to show for a node: its name, headline or @id, else its type.
  *
  * @param array<string, mixed> $node Schema object.

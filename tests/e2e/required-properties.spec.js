@@ -27,10 +27,29 @@ const FIRST_ANSWER =
 	'<p>Most orders arrive within 3 to 5 working days. You can track your parcel on <a href="https://example.com/track">our tracking page</a>.</p>';
 const INCOMPLETE_FAQ = readPattern( 'faq' ).replace( FIRST_ANSWER, '<p></p>' );
 const MISSING_ANSWER = {
+	severity: 'error',
+	code: 'missing_required',
+	source: 'schema-org-blocks/required',
 	type: 'Question',
 	property: 'acceptedAnswer',
 	label: 'How long does delivery take?',
+	message: 'Missing required property: Accepted Answer.',
 };
+
+const errorsOf = ( result ) =>
+	result.issues.filter( ( issue ) => 'error' === issue.severity );
+
+const ARTICLE_SCHEMA = ( mappings ) => ( {
+	type: 'Article',
+	mappings,
+	isProperty: false,
+	propertyName: null,
+} );
+
+const articleMarkup = ( text, mappings ) =>
+	`<!-- wp:group ${ JSON.stringify( {
+		schemaOrg: ARTICLE_SCHEMA( mappings ),
+	} ) } --><div class="wp-block-group"><!-- wp:paragraph --><p>${ text }</p><!-- /wp:paragraph --></div><!-- /wp:group -->`;
 
 // Read-only abilities run with GET; input goes in the query string as input[name].
 const run = ( requestUtils, input ) =>
@@ -237,7 +256,7 @@ test.describe( 'Required properties', () => {
 		}
 	} );
 
-	test.describe( 'get-schema-graph missing', () => {
+	test.describe( 'get-schema-graph issues', () => {
 		const TEMPLATE = '/wp/v2/templates/twentytwentyfive//single';
 		let draft;
 
@@ -269,31 +288,36 @@ test.describe( 'Required properties', () => {
 				content: INCOMPLETE_FAQ,
 			} );
 
-			expect( result.missing ).toEqual( [ MISSING_ANSWER ] );
+			expect( errorsOf( result ) ).toEqual( [
+				expect.objectContaining( MISSING_ANSWER ),
+			] );
 		} );
 
-		test( 'is empty for a complete FAQ', async ( { requestUtils } ) => {
+		test( 'has no errors for a complete FAQ', async ( {
+			requestUtils,
+		} ) => {
 			const result = await run( requestUtils, {
 				content: readPattern( 'faq' ),
 			} );
 
-			expect( result.missing ).toEqual( [] );
+			expect( errorsOf( result ) ).toEqual( [] );
 		} );
 
 		test( 'lists what an Article cannot infer without a post', async ( {
 			requestUtils,
 		} ) => {
-			const article = `<!-- wp:group ${ JSON.stringify( {
-				schemaOrg: {
-					type: 'Article',
-					mappings: { headline: { source: 'attribute' } },
-					isProperty: false,
-					propertyName: null,
-				},
-			} ) } --><div class="wp-block-group"><!-- wp:paragraph --><p>Body</p><!-- /wp:paragraph --></div><!-- /wp:group -->`;
+			const article = articleMarkup( 'Body', {
+				headline: { source: 'attribute' },
+			} );
 
 			const alone = await run( requestUtils, { content: article } );
-			expect( alone.missing ).toEqual( [
+			expect(
+				errorsOf( alone ).map( ( { type, property, label } ) => ( {
+					type,
+					property,
+					label,
+				} ) )
+			).toEqual( [
 				{ type: 'Article', property: 'author', label: 'Body' },
 				{ type: 'Article', property: 'publisher', label: 'Body' },
 				{ type: 'Article', property: 'datePublished', label: 'Body' },
@@ -303,7 +327,50 @@ test.describe( 'Required properties', () => {
 				content: article,
 				post_id: draft.id,
 			} );
-			expect( inPost.missing ).toEqual( [] );
+			expect( errorsOf( inPost ) ).toEqual( [] );
+		} );
+
+		test( 'suggests the recommended image of an Article', async ( {
+			requestUtils,
+		} ) => {
+			const result = await run( requestUtils, {
+				content: articleMarkup( 'Body', {
+					headline: { source: 'attribute' },
+				} ),
+				post_id: draft.id,
+			} );
+
+			expect( result.issues ).toContainEqual(
+				expect.objectContaining( {
+					severity: 'warning',
+					code: 'missing_recommended',
+					source: 'google/article',
+					type: 'Article',
+					property: 'image',
+					label: 'Body',
+				} )
+			);
+		} );
+
+		test( 'warns about a date that is not a date', async ( {
+			requestUtils,
+		} ) => {
+			const result = await run( requestUtils, {
+				content: articleMarkup( 'not a date', {
+					datePublished: { source: 'attribute' },
+				} ),
+				post_id: draft.id,
+			} );
+
+			expect( result.issues ).toContainEqual(
+				expect.objectContaining( {
+					severity: 'warning',
+					code: 'invalid_value',
+					type: 'Article',
+					property: 'datePublished',
+					message: 'Date Published has an invalid value.',
+				} )
+			);
 		} );
 
 		test( 'with_template builds the graph from the post template', async ( {
@@ -354,7 +421,9 @@ test.describe( 'Required properties', () => {
 				'@type': 'FAQPage',
 				description: settings.title,
 			} );
-			expect( withTemplate.missing ).toEqual( [ MISSING_ANSWER ] );
+			expect( errorsOf( withTemplate ) ).toEqual( [
+				expect.objectContaining( MISSING_ANSWER ),
+			] );
 		} );
 	} );
 
@@ -380,7 +449,9 @@ test.describe( 'Required properties', () => {
 			expect( result.graph ).toContainEqual(
 				expect.objectContaining( { '@type': 'FAQPage' } )
 			);
-			expect( result.missing ).toEqual( [ MISSING_ANSWER ] );
+			expect( errorsOf( result ) ).toEqual( [
+				expect.objectContaining( MISSING_ANSWER ),
+			] );
 		} );
 
 		test( 'refuses a request without edit rights', async ( {
@@ -431,11 +502,86 @@ test.describe( 'Required properties', () => {
 				'Some structured data is incomplete.'
 			);
 			await expect( panel.getByRole( 'listitem' ) ).toHaveText( [
-				'How long does delivery take? (Question): missing Accepted Answer',
+				'How long does delivery take? (Question): Missing required property: Accepted Answer.',
 			] );
 			await expect(
 				panel.getByRole( 'button', { name: 'Publish', exact: true } )
 			).toBeEnabled();
+		} );
+
+		test( 'lists invalid values and hides suggestions until asked', async ( {
+			page,
+			newPost,
+		} ) => {
+			await newPost();
+			await insertMarkup(
+				page,
+				articleMarkup( 'not a date', {
+					headline: { source: 'post', field: 'title' },
+					datePublished: { source: 'attribute' },
+				} )
+			);
+
+			const panel = await openPublishPanel( page );
+			const items = panel.getByRole( 'listitem' );
+			const toggle = panel.getByRole( 'button', {
+				name: /^Show \d+ suggestions?$/,
+			} );
+
+			await expect( panel ).toContainText(
+				'Some structured data is incomplete.'
+			);
+			await expect( items ).toHaveCount( 1 );
+			await expect( items.first() ).toContainText(
+				'(Article): Date Published has an invalid value.'
+			);
+			await expect( toggle ).toBeVisible();
+			await expect(
+				panel.getByText( 'Missing recommended property: Image.' )
+			).toHaveCount( 0 );
+
+			await toggle.click();
+
+			await expect(
+				panel.getByText( 'Missing recommended property: Image.' )
+			).toBeVisible();
+			await expect( items.nth( 1 ) ).toContainText(
+				'(Article): Missing recommended property'
+			);
+			await expect(
+				panel.getByRole( 'button', { name: 'Hide suggestions' } )
+			).toBeVisible();
+			await expect(
+				panel.getByRole( 'button', { name: 'Publish', exact: true } )
+			).toBeEnabled();
+		} );
+
+		test( 'offers suggestions when all required data is set', async ( {
+			page,
+			newPost,
+		} ) => {
+			await newPost();
+			await insertMarkup(
+				page,
+				articleMarkup( 'Body', {
+					headline: { source: 'post', field: 'title' },
+				} )
+			);
+
+			const panel = await openPublishPanel( page );
+
+			await expect( panel ).toContainText(
+				'All required structured data is set.'
+			);
+			await expect( panel.getByRole( 'listitem' ) ).toHaveCount( 0 );
+
+			await panel
+				.getByRole( 'button', { name: /^Show \d+ suggestions?$/ } )
+				.click();
+
+			await expect(
+				panel.getByText( 'Missing recommended property: Image.' )
+			).toBeVisible();
 		} );
 
 		test( 'says everything is set for a complete FAQ', async ( {

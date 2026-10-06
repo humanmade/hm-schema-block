@@ -29,7 +29,9 @@
 		"build/**",
 		"inc/**",
 		"patterns/**",
+		"profiles/**",
 		"skills/**",
+		"vendor/**",
 		"schema-org-blocks.php",
 		"README.md"
 	],

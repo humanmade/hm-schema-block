@@ -4,8 +4,58 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "36f6e8ef1568e24f456156b80a6b010d",
-    "packages": [],
+    "content-hash": "5062e02c0430f9124b718abfc5db3859",
+    "packages": [
+        {
+            "name": "humanmade/schema-org-validator",
+            "version": "v0.1.0",
+            "source": {
+                "type": "git",
+                "url": "https://github.com/humanmade/schema-org-validator.git",
+                "reference": "de98f450005a9681257545a4a9e76485c1043d87"
+            },
+            "dist": {
+                "type": "zip",
+                "url": "https://api.github.com/repos/humanmade/schema-org-validator/zipball/de98f450005a9681257545a4a9e76485c1043d87",
+                "reference": "de98f450005a9681257545a4a9e76485c1043d87",
+                "shasum": ""
+            },
+            "require": {
+                "php": ">=8.0"
+            },
+            "require-dev": {
+                "phpstan/phpstan": "^1.12",
+                "phpunit/phpunit": "^9.6",
+                "squizlabs/php_codesniffer": "^3.13"
+            },
+            "bin": [
+                "bin/generate-vocabulary"
+            ],
+            "type": "library",
+            "autoload": {
+                "psr-4": {
+                    "HumanMade\\SchemaOrgValidator\\": "src/"
+                }
+            },
+            "notification-url": "https://packagist.org/downloads/",
+            "license": [
+                "GPL-2.0-or-later"
+            ],
+            "description": "Validate schema.org JSON-LD graphs against the full vocabulary and optional rule profiles such as Google rich results.",
+            "keywords": [
+                "JSON-LD",
+                "rich results",
+                "schema.org",
+                "structured data",
+                "validation"
+            ],
+            "support": {
+                "issues": "https://github.com/humanmade/schema-org-validator/issues",
+                "source": "https://github.com/humanmade/schema-org-validator/tree/v0.1.0"
+            },
+            "time": "2026-10-06T12:07:40+00:00"
+        }
+    ],
     "packages-dev": [
         {
             "name": "dealerdirect/phpcodesniffer-composer-installer",

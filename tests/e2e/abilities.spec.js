@@ -143,6 +143,8 @@ test.describe( 'Abilities', () => {
 
 			expect( result.source ).toBe( 'content' );
 			expect( result.note ).toContain( 'template' );
+			expect( result.issues ).toEqual( expect.any( Array ) );
+			expect( result ).not.toHaveProperty( 'missing' );
 			expect( result.graph ).toContainEqual(
 				expect.objectContaining( {
 					'@type': 'FAQPage',

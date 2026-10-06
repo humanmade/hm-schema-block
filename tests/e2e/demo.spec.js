@@ -412,7 +412,7 @@ test.describe( 'Demo media', () => {
 			.click();
 		const panel = prePublishPanel( page );
 		await expect( panel.getByRole( 'listitem' ) ).toHaveText( [
-			'How long does delivery take? (Question): missing Accepted Answer',
+			'How long does delivery take? (Question): Missing required property: Accepted Answer.',
 		] );
 		await page.mouse.move( 10, 10 );
 		await page.waitForTimeout( 300 );
@@ -590,7 +590,7 @@ test.describe( 'Demo media', () => {
 				'All required structured data is set.'
 			);
 			await demo.caption(
-				'Before publishing, a check lists any structured data that is missing.',
+				'Before publishing, a check lists problems in the structured data.',
 				2400
 			);
 			await demo.click(
