@@ -121,17 +121,17 @@ function get_post_field( string $field, WP_Post $post ) : ?string {
 		case 'title':
 			return text( get_the_title( $post ) );
 		case 'url':
-			return get_permalink( $post ) ?: null;
+			return non_empty( get_permalink( $post ) );
 		case 'date':
-			return get_post_time( 'c', false, $post ) ?: null;
+			return non_empty( get_post_time( 'c', false, $post ) );
 		case 'modified':
-			return get_post_modified_time( 'c', false, $post ) ?: null;
+			return non_empty( get_post_modified_time( 'c', false, $post ) );
 		case 'excerpt':
 			return post_password_required( $post ) ? null : text( get_the_excerpt( $post ) );
 		case 'author':
 			return text( get_the_author_meta( 'display_name', (int) $post->post_author ) );
 		case 'image':
-			return get_the_post_thumbnail_url( $post, 'full' ) ?: null;
+			return non_empty( get_the_post_thumbnail_url( $post, 'full' ) );
 	}
 
 	return null;
@@ -152,13 +152,23 @@ function get_site_field( string $field ) : ?string {
 		case 'url':
 			return home_url( '/' );
 		case 'language':
-			return get_bloginfo( 'language' ) ?: null;
+			return non_empty( get_bloginfo( 'language' ) );
 		case 'logo':
 			$logo_id = (int) get_theme_mod( 'custom_logo', get_option( 'site_logo' ) );
-			return $logo_id ? ( wp_get_attachment_image_url( $logo_id, 'full' ) ?: null ) : null;
+			return $logo_id ? non_empty( wp_get_attachment_image_url( $logo_id, 'full' ) ) : null;
 	}
 
 	return null;
+}
+
+/**
+ * Get a value as a string, or null when it is empty or false.
+ *
+ * @param string|false|null $value Value.
+ * @return string|null
+ */
+function non_empty( $value ) : ?string {
+	return $value ? (string) $value : null;
 }
 
 /**

@@ -633,7 +633,7 @@ function get_type_properties( string $type ) : array {
 /**
  * Get the properties a type needs for rich results, including those of its parent types.
  *
- * schema.org has no required properties. These follow Google's rich result requirements, plus
+ * Schema.org has no required properties. These follow Google's rich result requirements, plus
  * author and publisher for articles. An entry that is an array means any one of those
  * properties will do.
  *
