@@ -54,6 +54,13 @@ const QUESTIONS = [
 	],
 ];
 
+// The FAQ pattern with the first answer left empty, for the pre-publish check.
+const FIRST_ANSWER =
+	'<p>Most orders arrive within 3 to 5 working days. You can track your parcel on <a href="https://example.com/track">our tracking page</a>.</p>';
+const INCOMPLETE_FAQ = fs
+	.readFileSync( path.join( process.cwd(), 'patterns/faq.html' ), 'utf8' )
+	.replace( FIRST_ANSWER, '<p></p>' );
+
 // The parts of the video in the README GIF: [ from mark, to mark, speed ].
 const GIF_PARTS = [
 	[ 'gifFrom', 'typeFrom', 1.6 ],
@@ -162,6 +169,27 @@ const scrollSidebarTo = ( locator, offset ) =>
 			gap;
 		parent.scrollTo( { top, behavior: 'smooth' } );
 	}, offset );
+
+// The "Schema.org properties" tools panel of the selected block.
+const propertiesPanel = ( page ) =>
+	page
+		.getByRole( 'region', { name: 'Editor settings' } )
+		.locator( '.components-tools-panel', {
+			has: page.getByRole( 'heading', {
+				name: 'Schema.org properties',
+			} ),
+		} );
+
+// The "Schema.org" panel of the pre-publish sidebar.
+const prePublishPanel = ( page ) =>
+	page
+		.getByRole( 'region', { name: 'Editor publish' } )
+		.locator( '.components-panel__body', {
+			has: page.getByRole( 'button', {
+				name: 'Schema.org',
+				exact: true,
+			} ),
+		} );
 
 // Shoots a locator at a tall viewport, so a long sidebar panel fits.
 async function shootTall( page, locator, file ) {
@@ -322,6 +350,73 @@ test.describe( 'Demo media', () => {
 		await mappingPanel( page ).screenshot( {
 			path: shotPath( 'blog-list-preset.png' ),
 		} );
+	} );
+
+	test( 'screenshots of the properties panel and the pre-publish check', async ( {
+		newPost,
+		editor,
+		page,
+		insertBlock,
+		schemaPanel,
+	} ) => {
+		await newPost();
+		await insertBlock( {
+			name: 'core/group',
+			innerBlocks: [
+				{
+					name: 'core/heading',
+					attributes: { content: 'Ten tips for baking bread' },
+				},
+				{
+					name: 'core/paragraph',
+					attributes: { content: 'Start with a good flour.' },
+				},
+			],
+		} );
+		await editor.selectBlocks(
+			editor.canvas.locator( '[data-type="core/group"]' )
+		);
+		await schemaPanel.open();
+		await schemaPanel.sidebar
+			.getByRole( 'button', { name: 'Article', exact: true } )
+			.click();
+		await expect(
+			schemaPanel.sidebar.getByRole( 'combobox', { name: 'Schema Type' } )
+		).toHaveValue( 'Article' );
+		const properties = propertiesPanel( page );
+		const published = await schemaPanel.addProperty( 'Date Published' );
+		await published.selectOption( { label: 'Post date' } );
+		const publisher = await schemaPanel.addProperty( 'Publisher' );
+		await publisher.selectOption( { label: 'Link to site Organization' } );
+		await expect(
+			properties.getByRole( 'combobox', { name: 'URL', exact: true } )
+		).toBeVisible();
+		await page.mouse.move( 10, 10 );
+		await page.waitForTimeout( 300 );
+		await shootTall( page, properties, 'properties-panel.png' );
+
+		// A draft whose FAQ has a question without an answer.
+		await page.evaluate( ( markup ) => {
+			const { select, dispatch } = window.wp.data;
+			const ids = select( 'core/block-editor' )
+				.getBlocks()
+				.map( ( block ) => block.clientId );
+			dispatch( 'core/block-editor' ).removeBlocks( ids );
+			dispatch( 'core/block-editor' ).insertBlocks(
+				window.wp.blocks.parse( markup )
+			);
+		}, INCOMPLETE_FAQ );
+		await page
+			.getByRole( 'region', { name: 'Editor top bar' } )
+			.getByRole( 'button', { name: 'Publish', exact: true } )
+			.click();
+		const panel = prePublishPanel( page );
+		await expect( panel.getByRole( 'listitem' ) ).toHaveText( [
+			'How long does delivery take? (Question): missing Accepted Answer',
+		] );
+		await page.mouse.move( 10, 10 );
+		await page.waitForTimeout( 300 );
+		await panel.screenshot( { path: shotPath( 'pre-publish-check.png' ) } );
 	} );
 
 	test( 'record the demo', async ( {
@@ -488,10 +583,21 @@ test.describe( 'Demo media', () => {
 			await demo.click(
 				topBar.getByRole( 'button', { name: 'Publish', exact: true } )
 			);
+			const publishPanel = page.getByRole( 'region', {
+				name: 'Editor publish',
+			} );
+			await expect( prePublishPanel( page ) ).toContainText(
+				'All required structured data is set.'
+			);
+			await demo.caption(
+				'Before publishing, a check lists any structured data that is missing.',
+				2400
+			);
 			await demo.click(
-				page
-					.getByRole( 'region', { name: 'Editor publish' } )
-					.getByRole( 'button', { name: 'Publish', exact: true } )
+				publishPanel.getByRole( 'button', {
+					name: 'Publish',
+					exact: true,
+				} )
 			);
 			await page
 				.getByRole( 'button', { name: 'Dismiss this notice' } )
@@ -615,9 +721,32 @@ test.describe( 'Demo media', () => {
 			await demo.caption( 'Graph settings link entities together.', 600 );
 			await demo.moveTo( sidebar.getByLabel( 'Nest inner entities as' ) );
 			await demo.pause( 2200 );
-			await demo.shoot( () =>
-				graph.screenshot( { path: shotPath( 'graph-controls.png' ) } )
-			);
+			await demo.shoot( async () => {
+				const boxes = await Promise.all(
+					[ 'Entity ID', 'Nest inner entities as' ].map( ( label ) =>
+						graph
+							.locator( '.components-base-control', {
+								has: page.getByLabel( label ),
+							} )
+							.last()
+							.boundingBox()
+					)
+				);
+				const panelBox = await graph.boundingBox();
+				const top = Math.min( ...boxes.map( ( b ) => b.y ) );
+				const bottom = Math.max(
+					...boxes.map( ( b ) => b.y + b.height )
+				);
+				await page.screenshot( {
+					path: shotPath( 'graph-controls.png' ),
+					clip: {
+						x: panelBox.x,
+						y: top - 16,
+						width: panelBox.width,
+						height: bottom - top + 32,
+					},
+				} );
+			} );
 
 			const saveButton = topBar.getByRole( 'button', {
 				name: 'Save',
@@ -642,24 +771,21 @@ test.describe( 'Demo media', () => {
 				)
 			);
 			const nodes = data[ '@graph' ];
-			const webPage = nodes.find(
-				( node ) => node[ '@type' ] === 'WebPage'
-			);
+			// One page node: the FAQ is the page, so the hub is the FAQPage.
+			const hub = nodes.find( ( node ) => node[ '@type' ] === 'FAQPage' );
 			expect( nodes.map( ( node ) => node[ '@type' ] ).sort() ).toEqual( [
+				'FAQPage',
 				'Organization',
-				'WebPage',
 				'WebSite',
 			] );
-			expect( webPage.mainEntity ).toMatchObject( {
-				'@type': 'Article',
-				hasPart: { '@type': 'FAQPage' },
-			} );
+			expect( hub.mainEntity ).toHaveLength( QUESTIONS.length );
+			expect( hub.hasPart ).toMatchObject( { '@type': 'Article' } );
 
 			demo.mark( 'graphFrom' );
 			await demo.pause( 600 );
 			await demo.showJsonLd();
 			await demo.caption(
-				'One connected graph: WebPage, Article, FAQ, WebSite and Organization.',
+				'One connected graph: the FAQ page with its Article, WebSite and Organization.',
 				2000
 			);
 			// The whole graph in one shot: a smaller font and a viewport as tall as the JSON.
