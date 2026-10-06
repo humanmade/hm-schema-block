@@ -101,13 +101,32 @@ function validate( array $graph ) : array {
 		]
 	);
 	$issues    = [];
+	$required  = [];
+
+	foreach ( $report->issues() as $issue ) {
+		if ( 'missing_required' === $issue->code() ) {
+			$required[ $issue->path() . '|' . $issue->property() ] = true;
+		}
+	}
 
 	foreach ( $report->issues() as $issue ) {
 		if ( Issue::NOTICE === $issue->severity() ) {
 			continue;
 		}
 
-		$issues[] = [
+		$key = $issue->path() . '|' . $issue->property();
+
+		if ( 'missing_recommended' === $issue->code() && isset( $required[ $key ] ) ) {
+			continue;
+		}
+
+		$key .= '|' . $issue->code();
+
+		if ( isset( $issues[ $key ] ) ) {
+			continue;
+		}
+
+		$issues[ $key ] = [
 			'severity' => $issue->severity(),
 			'code'     => $issue->code(),
 			'message'  => get_message( $issue ),
@@ -118,6 +137,8 @@ function validate( array $graph ) : array {
 			'label'    => get_label( $graph, $issue ),
 		];
 	}
+
+	$issues = array_values( $issues );
 
 	usort(
 		$issues,
