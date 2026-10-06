@@ -153,9 +153,10 @@ const SchemaTypeSelector = ( {
 			? availableProperties[ 0 ]
 			: null;
 
-	const lockedType = isProperty
+	const onlyType = isProperty
 		? getLockedValueType( parentSchemaType, propertyName )
 		: null;
+	const lockedType = onlyType && value === onlyType ? onlyType : null;
 
 	const typeHelp = isProperty
 		? __(
