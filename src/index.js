@@ -39,12 +39,19 @@ import './variations';
 import './pre-publish';
 
 /**
+ * Schema types blocks have when none is saved, as in PHP's get_default_config().
+ */
+const DEFAULT_TYPES = {
+	'core/breadcrumbs': 'BreadcrumbList',
+};
+
+/**
  * Add schemaOrg attribute to all blocks.
  */
 addFilter(
 	'blocks.registerBlockType',
 	'schema-org-blocks/add-attributes',
-	( settings ) => {
+	( settings, name ) => {
 		if ( ! settings.attributes ) {
 			settings.attributes = {};
 		}
@@ -52,7 +59,7 @@ addFilter(
 		settings.attributes.schemaOrg = {
 			type: 'object',
 			default: {
-				type: null,
+				type: DEFAULT_TYPES[ name ] ?? null,
 				mappings: {},
 				isProperty: false,
 				propertyName: null,

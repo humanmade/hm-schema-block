@@ -31,7 +31,7 @@ const MAX_TOGGLE_OPTIONS = 3;
  * @param {string} parentType   Schema type that has the property.
  * @param {string} propertyName Property name.
  * @return {{types: string[], acceptsData: boolean}} Object types the property accepts, including
- *                                                   subtypes, and whether it also accepts plain data types.
+ *                                                   subtypes unless a type has `offerAsSubtype: false`, and whether it also accepts plain data types.
  */
 function getAcceptedTypes( parentType, propertyName ) {
 	const { schemaTypes = {}, schemaProperties = {} } =
@@ -45,7 +45,8 @@ function getAcceptedTypes( parentType, propertyName ) {
 			accepted.some(
 				( type ) =>
 					type === typeName ||
-					isSubtypeOf( typeName, type, schemaTypes )
+					( schemaTypes[ typeName ]?.offerAsSubtype !== false &&
+						isSubtypeOf( typeName, type, schemaTypes ) )
 			)
 		),
 		acceptsData: accepted.some( ( type ) => DATA_TYPES.includes( type ) ),

@@ -146,6 +146,10 @@ function get_schema_types() : array {
 					'type'  => 'Thing',
 					'label' => 'Main Entity',
 				],
+				'breadcrumb' => [
+					'type'  => 'BreadcrumbList',
+					'label' => 'Breadcrumb',
+				],
 			],
 		],
 		'FAQPage'         => [
@@ -241,6 +245,13 @@ function get_schema_types() : array {
 					'label' => 'Number of Items',
 				],
 			],
+		],
+		// `offerAsSubtype` false: the editor offers the type only to properties that name it, not to those that accept its parent.
+		'BreadcrumbList'  => [
+			'label'          => 'Breadcrumb List',
+			'parent'         => 'ItemList',
+			'offerAsSubtype' => false,
+			'properties'     => [],
 		],
 		'ListItem'        => [
 			'label'      => 'List Item',

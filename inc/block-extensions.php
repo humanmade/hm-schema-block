@@ -41,17 +41,33 @@ function register_block_attribute() : void {
  * @param string               $block_name Block name.
  * @return array<string, mixed>
  */
-function add_schema_org_attribute( array $args, string $block_name ) : array { // phpcs:ignore Generic.CodeAnalysis.UnusedFunctionParameter.FoundAfterLastUsed -- Filter callback signature.
+function add_schema_org_attribute( array $args, string $block_name ) : array {
 	$args['attributes']['schemaOrg'] = [
 		'type'    => 'object',
-		'default' => [
-			'type'         => null,
-			'mappings'     => [],
-			'isProperty'   => false,
-			'propertyName' => null,
-		],
+		'default' => get_default_config( $block_name ),
 	];
 	return $args;
+}
+
+/**
+ * Get the schemaOrg configuration a block has when none is saved.
+ *
+ * Most blocks have no type. The breadcrumbs block is a BreadcrumbList.
+ *
+ * @param string $block_name Block name.
+ * @return array{type: ?string, mappings: array<string, mixed>, isProperty: bool, propertyName: ?string}
+ */
+function get_default_config( string $block_name ) : array {
+	$types = [
+		'core/breadcrumbs' => 'BreadcrumbList',
+	];
+
+	return [
+		'type'         => $types[ $block_name ] ?? null,
+		'mappings'     => [],
+		'isProperty'   => false,
+		'propertyName' => null,
+	];
 }
 
 /**
@@ -65,7 +81,7 @@ function add_schema_org_attribute( array $args, string $block_name ) : array { /
  * @return array{type: ?string, mappings: array<string, mixed>, isProperty: bool, propertyName: ?string, id: ?string, contains: ?string}
  */
 function get_config( array $block ) : array {
-	$config = $block['attrs']['schemaOrg'] ?? [];
+	$config = $block['attrs']['schemaOrg'] ?? get_default_config( (string) ( $block['blockName'] ?? '' ) );
 	$config = is_array( $config ) ? $config : [];
 	$id     = sanitize_key( (string) ( $config['id'] ?? '' ) );
 
@@ -284,6 +300,7 @@ function build_schema_object( array $block, array $context = [] ) : array {
 		$object[ $property ] = 1 === count( $values ) && 'itemListElement' !== $property ? $values[0] : $values;
 	}
 
+	$object = add_breadcrumb_items( $object, $block, $context );
 	$object = fill_inferred( $object, $context );
 
 	$has_properties = count( $object ) > 1;
@@ -293,6 +310,33 @@ function build_schema_object( array $block, array $context = [] ) : array {
 	}
 
 	return $has_properties ? $object : [];
+}
+
+/**
+ * Set the itemListElement of a breadcrumbs block to its trail, unless a mapping or property block did.
+ *
+ * With a post in context the object also gets the `@id` of the post's permalink and `#breadcrumb`.
+ *
+ * @param array<string, mixed> $entity  Schema object.
+ * @param array<string, mixed> $block   Parsed block.
+ * @param array<string, mixed> $context Block context.
+ * @return array<string, mixed>
+ */
+function add_breadcrumb_items( array $entity, array $block, array $context ) : array {
+	if ( 'core/breadcrumbs' !== ( $block['blockName'] ?? '' ) || isset( $entity['itemListElement'] ) || ! isset( SchemaTypes\get_type_properties( (string) $entity['@type'] )['itemListElement'] ) ) {
+		return $entity;
+	}
+
+	$items = DynamicValues\get_breadcrumb_items( $block, $context );
+
+	if ( ! $items ) {
+		return $entity;
+	}
+
+	$entity['itemListElement'] = wrap_list_items( $items );
+	$permalink                 = ! empty( $context['postId'] ) ? get_permalink( (int) $context['postId'] ) : false;
+
+	return $permalink ? [ '@id' => $permalink . '#breadcrumb' ] + $entity : $entity;
 }
 
 /**
