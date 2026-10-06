@@ -300,6 +300,7 @@ function build_schema_object( array $block, array $context = [] ) : array {
 		$object[ $property ] = 1 === count( $values ) && 'itemListElement' !== $property ? $values[0] : $values;
 	}
 
+	$object = add_breadcrumb_items( $object, $block, $context );
 	$object = fill_inferred( $object, $context );
 
 	$has_properties = count( $object ) > 1;
@@ -309,6 +310,33 @@ function build_schema_object( array $block, array $context = [] ) : array {
 	}
 
 	return $has_properties ? $object : [];
+}
+
+/**
+ * Set the itemListElement of a breadcrumbs block to its trail, unless a mapping or property block did.
+ *
+ * With a post in context the object also gets the `@id` of the post's permalink and `#breadcrumb`.
+ *
+ * @param array<string, mixed> $entity  Schema object.
+ * @param array<string, mixed> $block   Parsed block.
+ * @param array<string, mixed> $context Block context.
+ * @return array<string, mixed>
+ */
+function add_breadcrumb_items( array $entity, array $block, array $context ) : array {
+	if ( 'core/breadcrumbs' !== ( $block['blockName'] ?? '' ) || isset( $entity['itemListElement'] ) || ! isset( SchemaTypes\get_type_properties( (string) $entity['@type'] )['itemListElement'] ) ) {
+		return $entity;
+	}
+
+	$items = DynamicValues\get_breadcrumb_items( $block, $context );
+
+	if ( ! $items ) {
+		return $entity;
+	}
+
+	$entity['itemListElement'] = wrap_list_items( $items );
+	$permalink                 = ! empty( $context['postId'] ) ? get_permalink( (int) $context['postId'] ) : false;
+
+	return $permalink ? [ '@id' => $permalink . '#breadcrumb' ] + $entity : $entity;
 }
 
 /**
