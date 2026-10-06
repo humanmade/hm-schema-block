@@ -213,10 +213,13 @@ function get_query_post_ids( array $block, array $context ) : array {
 	$page_key = isset( $context['queryId'] ) ? 'query-' . $context['queryId'] . '-page' : 'query-page';
 	$page     = max( 1, absint( wp_unslash( $_GET[ $page_key ] ?? 1 ) ) ); // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- Read-only pagination, as core/post-template does.
 	$instance = new WP_Block( $block, $context );
-	$args     = array_merge( build_query_vars_from_query_block( $instance, $page ), [
-		'fields'        => 'ids',
-		'no_found_rows' => true,
-	] );
+	$args     = array_merge(
+		build_query_vars_from_query_block( $instance, $page ),
+		[
+			'fields'        => 'ids',
+			'no_found_rows' => true,
+		]
+	);
 
 	return array_map( 'intval', ( new WP_Query( $args ) )->posts );
 }

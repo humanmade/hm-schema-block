@@ -172,16 +172,16 @@ function register_abilities() : void {
 				'type'                 => 'object',
 				'default'              => [],
 				'properties'           => [
-					'url'     => [
+					'url'           => [
 						'type'        => 'string',
 						'format'      => 'uri',
 						'description' => __( 'URL of a page on this site.', 'schema-org-blocks' ),
 					],
-					'post_id' => [
+					'post_id'       => [
 						'type'        => 'integer',
 						'description' => __( 'ID of a post. With content, the post that post fields read from.', 'schema-org-blocks' ),
 					],
-					'content' => [
+					'content'       => [
 						'type'        => 'string',
 						'description' => __( 'Block markup to build the graph from.', 'schema-org-blocks' ),
 					],
