@@ -20,7 +20,9 @@ import {
 import { Fragment, useEffect } from '@wordpress/element';
 import { __ } from '@wordpress/i18n';
 
-import SchemaTypeSelector from './components/SchemaTypeSelector';
+import SchemaTypeSelector, {
+	getLockedValueType,
+} from './components/SchemaTypeSelector';
 import AttributeMappingControls from './components/AttributeMappingControls';
 import SchemaPresets from './components/SchemaPresets';
 import EntityControls from './components/EntityControls';
@@ -155,6 +157,31 @@ const withSchemaOrgControls = createHigherOrderComponent( ( BlockEdit ) => {
 			} );
 		};
 
+		// The value type for a chosen property: its only type if it has just one,
+		// otherwise the current type unless the property does not accept it.
+		const getValueTypeUpdates = ( propertyName ) => {
+			const lockedType = getLockedValueType( parentType, propertyName );
+			if ( lockedType ) {
+				return {
+					type: lockedType,
+					...( schemaOrg.type && schemaOrg.type !== lockedType
+						? { mappings: {} }
+						: {} ),
+				};
+			}
+			if (
+				schemaOrg.type &&
+				! propertyAcceptsType(
+					parentType,
+					propertyName,
+					schemaOrg.type
+				)
+			) {
+				return { type: null, mappings: {} };
+			}
+			return {};
+		};
+
 		return (
 			<Fragment>
 				<BlockEdit { ...props } />
@@ -209,18 +236,9 @@ const withSchemaOrgControls = createHigherOrderComponent( ( BlockEdit ) => {
 													propertyName,
 													isProperty,
 													skipDefaults: false,
-													// Drop a value type the new property does not accept.
-													...( schemaOrg.type &&
-													! propertyAcceptsType(
-														parentType,
-														propertyName,
-														schemaOrg.type
-													)
-														? {
-																type: null,
-																mappings: {},
-															}
-														: {} ),
+													...getValueTypeUpdates(
+														propertyName
+													),
 												}
 											: {
 													type: null,
