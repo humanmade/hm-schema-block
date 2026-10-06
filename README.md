@@ -13,6 +13,7 @@ A WordPress plugin that extends all blocks with schema.org type mapping and stru
 - 🎯 **Universal Block Extension**: Adds schema.org mapping to all WordPress blocks
 - 🔗 **Nearest Typed Ancestor**: Property blocks attach to the closest typed block above them, through untyped groups, columns and template parts
 - 🧱 **Block Theme Support**: Post title, date, author, featured image, excerpt and terms, site title, tagline and logo, and query loops all feed the graph
+- 🍞 **Breadcrumbs**: The core Breadcrumbs block outputs a `BreadcrumbList` with no setup, linked from the page node as its `breadcrumb`
 - 🪪 **Linked Graph**: Site-wide entities get an `@id`, and other entities can point to them, for example an Article's publisher
 - ❓ **Quick Setup Presets**: FAQ and How-to variations of the Accordion block, plus Quick setup buttons on Group, Accordion and Query blocks
 - 🧩 **Block Patterns**: Seven ready-made patterns in a "Schema.org" category
@@ -254,6 +255,12 @@ Dynamic blocks save no text, so the plugin asks WordPress for their value. Post 
 | Site Title | Site name | `name` |
 | Site Tagline | Site tagline | `description` |
 | Site Logo | Logo URL | `logo` or `image` |
+
+### Breadcrumbs
+
+The core Breadcrumbs block (WordPress 7.0 and later) is a `BreadcrumbList` with no setup, and the editor shows "Breadcrumb List" as its type. The plugin renders the block for the post in context and reads its trail: each entry is a `ListItem` with its `position`, its text as `name` and its link as `item`. The last entry has no link in core, so it links to the post's page. With a post in context, the list gets the `@id` of the permalink plus `#breadcrumb`, and the page node's `breadcrumb` points to it. When Yoast SEO outputs its own breadcrumb, ours is left out.
+
+To turn it off, set the block's Schema Type to none.
 
 ### Query loops
 

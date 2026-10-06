@@ -509,8 +509,8 @@ test.describe( 'FAQ and how-to presets', () => {
 		);
 		await schemaPanel.open();
 		await schemaPanel.sidebar
-			.getByRole( 'radio', { name: 'Answer', exact: true } )
-			.click();
+			.getByLabel( 'Value Type' )
+			.selectOption( { label: 'Answer' } );
 
 		const [ accordion ] = await editor.getBlocks();
 		const [ , , [ , panel ] ] = schemaTree( accordion.innerBlocks )[ 0 ];
@@ -546,8 +546,8 @@ test.describe( 'FAQ and how-to presets', () => {
 		);
 		await schemaPanel.open();
 		await schemaPanel.sidebar
-			.getByRole( 'radio', { name: 'Answer', exact: true } )
-			.click();
+			.getByLabel( 'Value Type' )
+			.selectOption( { label: 'Answer' } );
 
 		const propertyName = schemaPanel.sidebar.getByLabel( 'Property Name' );
 		await expect( propertyName.locator( 'option' ) ).not.toHaveCount( 0 );
