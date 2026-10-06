@@ -48,7 +48,8 @@ const test = base.extend( {
 		} );
 	},
 
-	// The "Schema.org Mapping" panel for the selected block.
+	// The "Schema.org" panel for the selected block, its "Schema.org properties"
+	// tools panel and the Entity ID / Nest inner entities as controls under "Advanced".
 	schemaPanel: async ( { editor, page }, use ) => {
 		const sidebar = page.getByRole( 'region', { name: 'Editor settings' } );
 
@@ -78,7 +79,8 @@ const test = base.extend( {
 					await settingsTab.click();
 				}
 				const toggle = sidebar.getByRole( 'button', {
-					name: 'Schema.org Mapping',
+					name: 'Schema.org',
+					exact: true,
 				} );
 				await expect( toggle ).toBeVisible();
 				if (
@@ -92,9 +94,62 @@ const test = base.extend( {
 				);
 			},
 
+			// Picks a type in the searchable Schema Type field by its key, e.g. WebPage.
 			async setType( type ) {
 				await panel.open();
-				await sidebar.getByLabel( 'Schema Type' ).selectOption( type );
+				const label = await page.evaluate(
+					( key ) =>
+						window.schemaOrgBlocksData.schemaTypes[ key ]?.label ||
+						key,
+					type
+				);
+				await sidebar
+					.getByRole( 'combobox', { name: 'Schema Type' } )
+					.fill( label );
+				await page
+					.getByRole( 'option', { name: label, exact: true } )
+					.click();
+			},
+
+			// Expands the block's "Advanced" panel, where the graph controls live.
+			async openAdvanced() {
+				await panel.open();
+				const toggle = sidebar.getByRole( 'button', {
+					name: 'Advanced',
+					exact: true,
+				} );
+				await expect( toggle ).toBeVisible();
+				if (
+					( await toggle.getAttribute( 'aria-expanded' ) ) !== 'true'
+				) {
+					await toggle.click();
+				}
+				await expect( toggle ).toHaveAttribute(
+					'aria-expanded',
+					'true'
+				);
+			},
+
+			// Shows a property in the "Schema.org properties" tools panel, which
+			// gives it a default mapping. Returns the property's source picker.
+			async addProperty( label ) {
+				await panel.open();
+				await sidebar
+					.getByRole( 'button', {
+						name: 'Schema.org properties options',
+					} )
+					.click();
+				await page
+					.getByRole( 'menuitemcheckbox', {
+						name: `Show ${ label }`,
+						exact: true,
+					} )
+					.click();
+				await page.keyboard.press( 'Escape' );
+				return sidebar.getByRole( 'combobox', {
+					name: label,
+					exact: true,
+				} );
 			},
 		};
 

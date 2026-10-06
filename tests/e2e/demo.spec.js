@@ -66,16 +66,27 @@ const GIF_PARTS = [
 
 const shotPath = ( file ) => path.join( SHOT_DIR, file );
 
-// The Schema.org Mapping panel in the editor sidebar.
+// The Schema.org panel in the editor sidebar.
 const mappingPanel = ( page ) =>
 	page
 		.getByRole( 'region', { name: 'Editor settings' } )
 		.locator( '.components-panel__body', {
-			has: page.getByRole( 'button', { name: 'Schema.org Mapping' } ),
+			has: page.getByRole( 'button', {
+				name: 'Schema.org',
+				exact: true,
+			} ),
+		} );
+
+// The block's Advanced panel, which holds the graph controls.
+const advancedPanel = ( page ) =>
+	page
+		.getByRole( 'region', { name: 'Editor settings' } )
+		.locator( '.components-panel__body', {
+			has: page.getByRole( 'button', { name: 'Advanced', exact: true } ),
 		} );
 
 /**
- * Opens Settings > Block > Schema.org Mapping for the selected block, with visible clicks
+ * Opens Settings > Block > Schema.org for the selected block, with visible clicks
  * when a demo is given, and scrolls the panel to the top of the sidebar.
  *
  * @param {Object} page   Playwright page.
@@ -113,7 +124,8 @@ async function openSchemaPanel( page, editor, demo ) {
 		await click( settingsTab );
 	}
 	const toggle = sidebar.getByRole( 'button', {
-		name: 'Schema.org Mapping',
+		name: 'Schema.org',
+		exact: true,
 	} );
 	await expect( toggle ).toBeVisible();
 	if ( ( await toggle.getAttribute( 'aria-expanded' ) ) !== 'true' ) {
@@ -303,7 +315,7 @@ test.describe( 'Demo media', () => {
 			.getByRole( 'button', { name: 'Blog', exact: true } )
 			.click();
 		await expect(
-			schemaPanel.sidebar.getByLabel( 'Schema Type' )
+			schemaPanel.sidebar.getByRole( 'combobox', { name: 'Schema Type' } )
 		).toHaveValue( 'Blog' );
 		await page.mouse.move( 10, 10 );
 		await page.waitForTimeout( 300 );
@@ -426,7 +438,7 @@ test.describe( 'Demo media', () => {
 			demo.mark( 'typeTo' );
 			await demo.pause( 600 );
 
-			// 3. The accordion and an item in the Schema.org Mapping panel.
+			// 3. The accordion and an item in the Schema.org panel.
 			const accordion = editor.canvas.locator(
 				'[data-type="core/accordion"]'
 			);
@@ -448,8 +460,10 @@ test.describe( 'Demo media', () => {
 			await editor.selectBlocks( firstItem );
 			await demo.pause( 600 );
 			sidebar = await openSchemaPanel( page, editor, demo );
-			const valueType = sidebar.getByLabel( 'Value Type' );
-			await expect( valueType ).toHaveValue( 'Question' );
+			const valueType = sidebar
+				.getByText( 'Question', { exact: true } )
+				.first();
+			await expect( valueType ).toBeVisible();
 			await demo.caption(
 				'Each item is a Question with its answer.',
 				600
@@ -559,9 +573,9 @@ test.describe( 'Demo media', () => {
 				} ),
 				1600
 			);
-			await expect( sidebar.getByLabel( 'Schema Type' ) ).toHaveValue(
-				'WebPage'
-			);
+			await expect(
+				sidebar.getByRole( 'combobox', { name: 'Schema Type' } )
+			).toHaveValue( 'Web Page' );
 			await demo.shoot( () =>
 				page.screenshot( {
 					path: shotPath( 'site-editor-web-page.png' ),
@@ -586,9 +600,16 @@ test.describe( 'Demo media', () => {
 			await editor.selectBlocks( main );
 			await demo.pause( 500 );
 			sidebar = await openSchemaPanel( page, editor, demo );
-			const graph = sidebar.locator(
-				'.schema-org-blocks-entity-controls'
-			);
+			const advanced = sidebar.getByRole( 'button', {
+				name: 'Advanced',
+				exact: true,
+			} );
+			if (
+				( await advanced.getAttribute( 'aria-expanded' ) ) !== 'true'
+			) {
+				await demo.click( advanced, 600 );
+			}
+			const graph = advancedPanel( page );
 			await scrollSidebarTo( graph, 220 );
 			await demo.pause( 800 );
 			await demo.caption( 'Graph settings link entities together.', 600 );

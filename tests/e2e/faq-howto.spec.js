@@ -113,7 +113,7 @@ const HOW_TO_ACCORDION_TREE = [
 ];
 
 // Adds a titled post with an untyped two-item accordion, selects it and opens the
-// Schema.org Mapping panel. Returns the Quick setup buttons.
+// Schema.org panel. Returns the Quick setup buttons.
 async function setUpPlainAccordion( editor, schemaPanel ) {
 	await editor.canvas
 		.getByRole( 'textbox', { name: 'Add title' } )
@@ -430,7 +430,7 @@ test.describe( 'FAQ and how-to presets', () => {
 		] );
 	} );
 
-	test( 'accordion item shows its Value Type and the FAQPage parent', async ( {
+	test( 'accordion item shows its locked Value Type and the FAQ Page parent', async ( {
 		editor,
 		page,
 		schemaPanel,
@@ -443,17 +443,21 @@ test.describe( 'FAQ and how-to presets', () => {
 		);
 		await schemaPanel.open();
 
+		const { sidebar } = schemaPanel;
 		await expect(
-			schemaPanel.sidebar.getByLabel( 'Value Type' )
-		).toHaveValue( 'Question' );
+			sidebar.getByLabel( 'Use as a property of FAQ Page' )
+		).toBeChecked();
+		// Question is the only type this property accepts, so it shows as text.
 		await expect(
-			schemaPanel.sidebar.getByLabel( 'Property Name' )
-		).toHaveValue( 'mainEntity' );
+			sidebar.getByText( 'Value Type', { exact: true } )
+		).toBeVisible();
 		await expect(
-			schemaPanel.sidebar.locator( '.components-notice', {
-				hasText: 'Parent block has schema type',
-			} )
-		).toContainText( 'FAQPage' );
+			sidebar.getByText( 'Question', { exact: true } ).first()
+		).toBeVisible();
+		await expect( sidebar.getByLabel( 'Value Type' ) ).toHaveCount( 0 );
+		await expect( sidebar.getByLabel( 'Property Name' ) ).toHaveValue(
+			'mainEntity'
+		);
 	} );
 
 	test( 'a mapping with Source "Post title" outputs the post title', async ( {
@@ -467,17 +471,9 @@ test.describe( 'FAQ and how-to presets', () => {
 		await editor.insertBlock( { name: 'core/group' } );
 		await schemaPanel.setType( 'Article' );
 
-		await schemaPanel.sidebar
-			.getByRole( 'button', { name: 'Add mapping' } )
-			.click();
-		const property = await schemaPanel.sidebar
-			.getByLabel( 'Schema Property' )
-			.first()
-			.inputValue();
-		await schemaPanel.sidebar
-			.getByLabel( 'Source' )
-			.first()
-			.selectOption( { label: 'Post title' } );
+		const property = 'headline';
+		const source = await schemaPanel.addProperty( 'Headline' );
+		await source.selectOption( { label: 'Post title' } );
 
 		const [ group ] = await editor.getBlocks();
 		expect( group.attributes.schemaOrg.mappings[ property ] ).toEqual(
@@ -513,8 +509,8 @@ test.describe( 'FAQ and how-to presets', () => {
 		);
 		await schemaPanel.open();
 		await schemaPanel.sidebar
-			.getByLabel( 'Value Type' )
-			.selectOption( 'Answer' );
+			.getByRole( 'radio', { name: 'Answer', exact: true } )
+			.click();
 
 		const [ accordion ] = await editor.getBlocks();
 		const [ , , [ , panel ] ] = schemaTree( accordion.innerBlocks )[ 0 ];
@@ -534,7 +530,7 @@ test.describe( 'FAQ and how-to presets', () => {
 		} );
 	} );
 
-	test( 'changing the property clears a value type it does not accept', async ( {
+	test( 'a typed block is only offered the properties that accept its type', async ( {
 		editor,
 		page,
 		schemaPanel,
@@ -550,18 +546,22 @@ test.describe( 'FAQ and how-to presets', () => {
 		);
 		await schemaPanel.open();
 		await schemaPanel.sidebar
-			.getByLabel( 'Value Type' )
-			.selectOption( 'Answer' );
-		await schemaPanel.sidebar
-			.getByLabel( 'Property Name' )
-			.selectOption( 'name' );
+			.getByRole( 'radio', { name: 'Answer', exact: true } )
+			.click();
+
+		const propertyName = schemaPanel.sidebar.getByLabel( 'Property Name' );
+		await expect( propertyName.locator( 'option' ) ).not.toHaveCount( 0 );
+		await expect(
+			propertyName.locator( 'option[value="name"]' )
+		).toHaveCount( 0 );
+		await propertyName.selectOption( 'suggestedAnswer' );
 
 		const [ accordion ] = await editor.getBlocks();
 		const [ , , [ , panel ] ] = schemaTree( accordion.innerBlocks )[ 0 ];
 		expect( panel[ 1 ] ).toMatchObject( {
-			type: null,
+			type: 'Answer',
 			isProperty: true,
-			propertyName: 'name',
+			propertyName: 'suggestedAnswer',
 		} );
 	} );
 
@@ -614,7 +614,7 @@ test.describe( 'FAQ and how-to presets', () => {
 		expect( findNode( data, 'HowTo' ) ).toBeUndefined();
 	} );
 
-	test( 'turning off "Map as property of parent" on an FAQ item drops its question', async ( {
+	test( 'turning off "Use as a property of" on an FAQ item drops its question', async ( {
 		editor,
 		page,
 		schemaPanel,
@@ -632,7 +632,7 @@ test.describe( 'FAQ and how-to presets', () => {
 		);
 		await schemaPanel.open();
 		const toggle = schemaPanel.sidebar.getByRole( 'checkbox', {
-			name: 'Map as property of parent',
+			name: 'Use as a property of FAQ Page',
 		} );
 		await expect( toggle ).toBeChecked();
 		await toggle.click();
@@ -692,7 +692,7 @@ test.describe( 'PR screenshots', () => {
 		! process.env.SCHEMA_SCREENSHOTS,
 		'Set SCHEMA_SCREENSHOTS=1 to capture PR screenshots.'
 	);
-	// Tall enough for the whole Schema.org Mapping panel to fit in the sidebar.
+	// Tall enough for the whole Schema.org panel to fit in the sidebar.
 	test.use( { viewport: { width: 1280, height: 1400 } } );
 
 	test( 'capture FAQ screenshots', async ( {
@@ -748,7 +748,10 @@ test.describe( 'PR screenshots', () => {
 		const mappingPanel = schemaPanel.sidebar.locator(
 			'.components-panel__body',
 			{
-				has: page.getByRole( 'button', { name: 'Schema.org Mapping' } ),
+				has: page.getByRole( 'button', {
+					name: 'Schema.org',
+					exact: true,
+				} ),
 			}
 		);
 
@@ -765,8 +768,8 @@ test.describe( 'PR screenshots', () => {
 		);
 		await schemaPanel.open();
 		await expect(
-			schemaPanel.sidebar.getByLabel( 'Value Type' )
-		).toHaveValue( 'Question' );
+			schemaPanel.sidebar.getByText( 'Value Type', { exact: true } )
+		).toBeVisible();
 		await mappingPanel.screenshot( {
 			path: path.join( SCREENSHOT_DIR, 'accordion-item-value-type.png' ),
 		} );

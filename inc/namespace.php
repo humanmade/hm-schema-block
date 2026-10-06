@@ -38,13 +38,6 @@ function enqueue_block_editor_assets() : void {
 
 	wp_set_script_translations( 'schema-org-blocks-editor', 'schema-org-blocks' );
 
-	wp_enqueue_style(
-		'schema-org-blocks-editor',
-		SCHEMA_ORG_BLOCKS_URL . '/build/index.css',
-		[],
-		$asset_file['version']
-	);
-
 	// Pass schema types to JavaScript.
 	wp_localize_script(
 		'schema-org-blocks-editor',

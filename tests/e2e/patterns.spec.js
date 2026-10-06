@@ -595,14 +595,13 @@ test.describe( 'Smart defaults for FSE blocks', () => {
 			.getByRole( 'button', { name: 'Organization', exact: true } )
 			.click();
 
-		const typeSelect = schemaPanel.sidebar.getByLabel( 'Schema Type' );
-		await typeSelect.selectOption( 'LocalBusiness' );
+		await schemaPanel.setType( 'LocalBusiness' );
 		expect( ( await getSchemaTree() )[ 0 ].schemaOrg ).toMatchObject( {
 			type: 'LocalBusiness',
 			id: 'organization',
 		} );
 
-		await typeSelect.selectOption( 'Article' );
+		await schemaPanel.setType( 'Article' );
 		const [ group ] = await getSchemaTree();
 		expect( group.schemaOrg.type ).toBe( 'Article' );
 		expect( group.schemaOrg.id ).toBeUndefined();

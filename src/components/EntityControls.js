@@ -2,14 +2,20 @@
  * Graph settings of a typed block: its entity id and the property its inner entities nest under.
  */
 
-import { SelectControl, TextControl } from '@wordpress/components';
+/* eslint-disable @wordpress/no-unsafe-wp-apis -- Layout components are only exported as experimental. */
+
+import {
+	SelectControl,
+	TextControl,
+	__experimentalVStack as VStack,
+} from '@wordpress/components';
 import { useMemo } from '@wordpress/element';
 import { __, sprintf } from '@wordpress/i18n';
 
 /**
  * Schema.org data types. Properties that only accept these hold plain values, not entities.
  */
-const DATA_TYPES = [
+export const DATA_TYPES = [
 	'Text',
 	'URL',
 	'Number',
@@ -75,7 +81,7 @@ const EntityControls = ( { schemaOrg, onChange } ) => {
 		: __( 'Default (none)', 'schema-org-blocks' );
 
 	return (
-		<div className="schema-org-blocks-entity-controls">
+		<VStack spacing={ 4 }>
 			<TextControl
 				__next40pxDefaultSize
 				__nextHasNoMarginBottom
@@ -117,7 +123,7 @@ const EntityControls = ( { schemaOrg, onChange } ) => {
 					'schema-org-blocks'
 				) }
 			/>
-		</div>
+		</VStack>
 	);
 };
 
