@@ -527,7 +527,7 @@ function get_page_graph( string $url ) {
 /**
  * Get the block template that renders a post, in a block theme.
  *
- * Tries the post's chosen template, else the template for its type and slug, then `singular`
+ * Tries `front-page` for the static front page, then the post's chosen template, else the template for its type and slug, then `singular`
  * and `index`, and returns the first that exists.
  *
  * @param int $post_id Post ID.
@@ -548,6 +548,10 @@ function get_post_template( int $post_id ) : ?WP_Block_Template {
 		$slugs = [ 'page-' . $post->post_name, 'page-' . $post->ID, 'page' ];
 	} else {
 		$slugs = [ 'single-' . $post->post_type . '-' . $post->post_name, 'single-' . $post->post_type, 'single' ];
+	}
+
+	if ( 'page' === $post->post_type && 'page' === get_option( 'show_on_front' ) && (int) get_option( 'page_on_front' ) === $post->ID ) {
+		array_unshift( $slugs, 'front-page' );
 	}
 
 	foreach ( array_merge( $slugs, [ 'singular', 'index' ] ) as $slug ) {
